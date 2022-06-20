@@ -99,32 +99,30 @@ impl Mino {
             for i in 0..4 {}
         }
 
-        fn RoteteEnum(rotate: i32, rotation: Rotation, invert: bool) -> Rotation {
+        fn RoteteEnum(mut rotate: i32, mut rotation: i32, invert: bool) -> i32 {
             if invert {
-                if rotate == 0 {}
-                if let mut rotate = Rotate::Left {
-                    rotate = Rotate::Right;
+                if rotate == Rotate::Left as i32 {
+                    rotate = Rotate::Right as i32;
                 } else {
                     rotate = Rotate::Left as i32;
                 }
             }
 
-            let mut rotation = rotation as usize;
-
             if let rotate = Rotate::Right {
                 rotation += 1;
 
-                if rotation == Rotation::Left as usize + 1 {
-                    rotation = Rotation::Zero as usize;
+                if rotation == Rotation::Left as i32 + 1 {
+                    rotation = Rotation::Zero as i32;
                 }
             } else {
                 rotation -= 1;
 
-                if rotation == Rotation::Zero as usize - 1 {
-                    rotation = Rotation::Left as usize;
+                if rotation == Rotation::Zero as i32 - 1 {
+                    rotation = Rotation::Left as i32;
                 }
             }
-            Rotation::from_usize(rotation as usize).unwrap()
+
+            rotation
         }
     }
 
