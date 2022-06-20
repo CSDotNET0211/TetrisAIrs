@@ -51,13 +51,13 @@ pub enum Rotate {
     Left,
 }
 pub struct Mino {
-    pub MinoKind: MinoKind,
-    pub Rotation: Rotation,
+    pub MinoKind: isize,
+    pub Rotation: isize,
     pub Position: i64,
 }
 
 impl Mino {
-    pub fn new(MinoKind: MinoKind, Rotation: Rotation, Position: i64) -> Mino {
+    pub fn new(MinoKind: isize, Rotation: isize, Position: i64) -> Mino {
         Mino {
             MinoKind: MinoKind,
             Rotation: Rotation,
@@ -99,12 +99,13 @@ impl Mino {
             for i in 0..4 {}
         }
 
-        fn RoteteEnum(rotate: Rotate, rotation: Rotation, invert: bool) -> Rotation {
+        fn RoteteEnum(rotate: i32, rotation: Rotation, invert: bool) -> Rotation {
             if invert {
+                if rotate == 0 {}
                 if let mut rotate = Rotate::Left {
                     rotate = Rotate::Right;
                 } else {
-                    rotate = Rotate::Left;
+                    rotate = Rotate::Left as i32;
                 }
             }
 
