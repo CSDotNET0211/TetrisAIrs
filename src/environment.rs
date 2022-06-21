@@ -87,7 +87,7 @@ impl Mino {
         }
     }
 
-    pub fn MoveForSRS(&mut self, srstest: [[Vector2; 1]; 1], rotate: Rotate, rotation: Rotation) {
+    pub fn MoveForSRS(&mut self, srstest: [[Vector2; 1]; 1], rotate: i32, rotation: i32) {
         if let rotate = Rotate::Right {
             let value = rotation as usize;
 
@@ -96,10 +96,15 @@ impl Mino {
                 Self::AddPosition(&mut self.Position, srstest[value][i].y.into(), i, false);
             }
         } else {
-            for i in 0..4 {}
+            let value = RotateEnum(rotate, rotation, false) as usize;
+
+            for i in 0..4 {
+                Self::AddPosition(&mut self.Position, (-srstest[value][i].x).into(), i, true);
+                Self::AddPosition(&mut self.Position, (-srstest[value][i].y).into(), i, false);
+            }
         }
 
-        fn RoteteEnum(mut rotate: i32, mut rotation: i32, invert: bool) -> i32 {
+        fn RotateEnum(mut rotate: i32, mut rotation: i32, invert: bool) -> i32 {
             if invert {
                 if rotate == Rotate::Left as i32 {
                     rotate = Rotate::Right as i32;
