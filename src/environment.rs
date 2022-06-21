@@ -11,16 +11,17 @@ impl Vector2 {
     }
 }
 
-pub enum MinoKind {
-    S,
-    Z,
-    L,
-    J,
-    O,
-    I,
-    T,
-    Null,
+struct MinoKind {}
+impl MinoKind {
+    pub const S: i8 = 0;
+    pub const Z: i8 = 1;
+    pub const L: i8 = 2;
+    pub const J: i8 = 3;
+    pub const O: i8 = 4;
+    pub const I: i8 = 5;
+    pub const T: i8 = 6;
 }
+
 pub enum Rotation {
     Zero,
     Right,
@@ -57,7 +58,7 @@ pub struct Mino {
 }
 
 impl Mino {
-    pub fn new(MinoKind: isize, Rotation: isize, Position: i64) -> Mino {
+    pub const    fn new(MinoKind: isize, Rotation: isize, Position: i64) -> Mino {
         Mino {
             MinoKind: MinoKind,
             Rotation: Rotation,
@@ -147,8 +148,73 @@ impl Mino {
 
         *array += value;
     }
+
+    pub fn AddPositionXY(array: &mut i64, x: i32, y: i32) {
+        let value = y + (x * 100);
+        let mut temp = value;
+
+        for i in 1..5 {
+            if i != 1 {
+                temp *= 10000;
+            }
+
+            *array += temp as i64;
+        }
+        //   value += x * 100;
+    }
+
+    pub fn GetPosition(&self, mut index: i32, isX: bool) -> i32 {
+        if index == i32::MAX {
+            index = 0;
+        } else {
+            index = 4 - index - 1;
+        }
+
+        let mut value = self.Position;
+        for i in 0..index {
+            value /= 10000;
+        }
+        value %= 10000;
+
+        if isX {
+            value as i32 / 100
+        } else {
+            value as i32 % 100
+        }
+    }
+
+    pub fn GetPositionFromValue(mut value: i64, mut index: i32, isX: bool) -> i32 {
+        if index == i32::MAX {
+            index = 0;
+        } else {
+            index = 4 - index - 1;
+        }
+
+        for i in 0..index {
+            value /= 10000;
+        }
+        value %= 10000;
+
+        if isX {
+            value as i32 / 100
+        } else {
+            value as i32 % 100
+        }
+    }
 }
 
 struct Environment {}
 
-impl Environment {}
+impl Environment {
+    const BAG_ARRAY: [i8; 7] = [
+        MinoKind::S,
+        MinoKind::Z,
+        MinoKind::L,
+        MinoKind::J,
+        MinoKind::O,
+        MinoKind::I,
+        MinoKind::T,
+    ];
+
+    _nextBag:Vec=Vec::new();
+}
