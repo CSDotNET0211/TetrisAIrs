@@ -203,7 +203,17 @@ impl Mino {
     }
 }
 
-struct Environment {}
+struct Environment {
+
+_nextBag:Vec;
+_clearedLine:i32;
+_score:i32;
+_deadFlag:bool;
+_nowMino:Mino;
+_next:[i32:5];
+_random:Rng;
+_field:[bool;FIELD_WIDTH*FIELD_HEIGHT];
+}
 
 impl Environment {
     const BAG_ARRAY: [i8; 7] = [
@@ -216,5 +226,8 @@ impl Environment {
         MinoKind::T,
     ];
 
-    _nextBag:Vec=Vec::new();
+    const FIELD_WIDTH:u32=10;
+	const FIELD_HEIGHT:u32=26;
+
+
 }
