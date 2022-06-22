@@ -1,12 +1,27 @@
+use std::io::IoSlice;
+
 use num;
 use num::traits::FromPrimitive;
+use rand::prelude::*;
 pub struct Vector2 {
     pub x: i32,
     pub y: i32,
 }
 
 impl Vector2 {
-    pub fn new(x: i32, y: i32) -> Vector2 {
+    pub const ZERO: Vector2 = Self::new(0, 0);
+    pub const X1: Vector2 = Self::new(1, 0);
+    pub const MX1: Vector2 = Self::new(-1, 0);
+    pub const Y1: Vector2 = Self::new(0, 1);
+    pub const MY1: Vector2 = Self::new(0, -1);
+    pub const ONE: Vector2 = Self::new(1, 1);
+    pub const MONE: Vector2 = Self::new(-1, -1);
+    pub const X2: Vector2 = Self::new(2, 0);
+    pub const MX2: Vector2 = Self::new(-1, 0);
+    pub const Y2: Vector2 = Self::new(0, 2);
+    pub const MY2: Vector2 = Self::new(0, -2);
+
+    pub const fn new(x: i32, y: i32) -> Vector2 {
         Vector2 { x: x, y: y }
     }
 }
@@ -22,29 +37,13 @@ impl MinoKind {
     pub const T: i8 = 6;
 }
 
-pub enum Rotation {
-    Zero,
-    Right,
-    Turn,
-    Left,
-}
-impl FromPrimitive for Rotation {
-    fn from_i64(n: i64) -> Option<Rotation> {
-        match n {
-            0 => Some(Rotation::Zero),
-            1 => Some(Rotation::Right),
-            2 => Some(Rotation::Turn),
-            _ => None,
-        }
-    }
-    fn from_u64(n: u64) -> Option<Rotation> {
-        match n {
-            0 => Some(Rotation::Zero),
-            1 => Some(Rotation::Right),
-            2 => Some(Rotation::Turn),
-            _ => None,
-        }
-    }
+struct Rotation {}
+
+impl Rotation {
+    pub const Zero: i8 = 0;
+    pub const Right: i8 = 1;
+    pub const Turn: i8 = 2;
+    pub const Left: i8 = 3;
 }
 
 pub enum Rotate {
@@ -52,17 +51,17 @@ pub enum Rotate {
     Left,
 }
 pub struct Mino {
-    pub MinoKind: isize,
-    pub Rotation: isize,
+    pub MinoKind: i32,
+    pub Rotation: i32,
     pub Position: i64,
 }
 
 impl Mino {
-    pub const    fn new(MinoKind: isize, Rotation: isize, Position: i64) -> Mino {
+    pub const fn new() -> Mino {
         Mino {
-            MinoKind: MinoKind,
-            Rotation: Rotation,
-            Position: Position,
+            MinoKind: -1,
+            Position: -1,
+            Rotation: Rotation::Zero as i32,
         }
     }
 
@@ -204,15 +203,16 @@ impl Mino {
 }
 
 struct Environment {
-
-_nextBag:Vec;
-_clearedLine:i32;
-_score:i32;
-_deadFlag:bool;
-_nowMino:Mino;
-_next:[i32:5];
-_random:Rng;
-_field:[bool;FIELD_WIDTH*FIELD_HEIGHT];
+    _nextBag: Vec<u32>,
+    _clearedLine: isize,
+    _score: isize,
+    _deadFlag: bool,
+    _nowMino: Mino,
+    _next: [i32; 5],
+    _random: ThreadRng,
+    _field: [bool; Self::FIELD_WIDTH as usize * Self::FIELD_HEIGHT as usize],
+    _canHold: bool,
+    _nowHold: i32,
 }
 
 impl Environment {
@@ -226,8 +226,240 @@ impl Environment {
         MinoKind::T,
     ];
 
-    const FIELD_WIDTH:u32=10;
-	const FIELD_HEIGHT:u32=26;
+    pub const FIELD_WIDTH: u32 = 10;
+    pub const FIELD_HEIGHT: u32 = 26;
 
+    const JRotateTable: [[Vector2; 4]; 4] = [
+        [Vector2::X2, Vector2::ONE, Vector2::ZERO, Vector2::MONE],
+        [
+            Vector2::MY2,
+            Vector2::new(1, -1),
+            Vector2::ZERO,
+            Vector2::new(-1, 1),
+        ],
+        [Vector2::MX2, Vector2::MONE, Vector2::ZERO, Vector2::ONE],
+        [
+            Vector2::Y2,
+            Vector2::new(-1, 1),
+            Vector2::ZERO,
+            Vector2::new(1, -1),
+        ],
+    ];
 
+    const LRotateTable: [[Vector2; 4]; 4] = [
+        [Vector2::MY2, Vector2::ONE, Vector2::ZERO, Vector2::MONE],
+        [
+            Vector2::MX2,
+            Vector2::new(1, -1),
+            Vector2::ZERO,
+            Vector2::new(-1, 1),
+        ],
+        [Vector2::Y2, Vector2::MONE, Vector2::ZERO, Vector2::ONE],
+        [
+            Vector2::X2,
+            Vector2::new(-1, 1),
+            Vector2::ZERO,
+            Vector2::new(1, -1),
+        ],
+    ];
+
+    const SRotateTable: [[Vector2; 4]; 4] = [
+        [
+            Vector2::new(1, -1),
+            Vector2::MY2,
+            Vector2::ONE,
+            Vector2::ZERO,
+        ],
+        [
+            Vector2::MONE,
+            Vector2::MX2,
+            Vector2::new(1, -1),
+            Vector2::ZERO,
+        ],
+        [
+            Vector2::new(-1, 1),
+            Vector2::Y2,
+            Vector2::MONE,
+            Vector2::ZERO,
+        ],
+        [
+            Vector2::ONE,
+            Vector2::X2,
+            Vector2::new(-1, 1),
+            Vector2::ZERO,
+        ],
+    ];
+
+    const ZRotateTable: [[Vector2; 4]; 4] = [
+        [
+            Vector2::X2,
+            Vector2::new(1, -1),
+            Vector2::ZERO,
+            Vector2::MONE,
+        ],
+        [
+            Vector2::MY2,
+            Vector2::MONE,
+            Vector2::ZERO,
+            Vector2::new(-1, 1),
+        ],
+        [
+            Vector2::MX2,
+            Vector2::new(-1, 1),
+            Vector2::ZERO,
+            Vector2::ONE,
+        ],
+        [
+            Vector2::Y2,
+            Vector2::ONE,
+            Vector2::ZERO,
+            Vector2::new(1, -1),
+        ],
+    ];
+
+    const TRotateTable: [[Vector2; 4]; 4] = [
+        [
+            Vector2::new(1, -1),
+            Vector2::ONE,
+            Vector2::ZERO,
+            Vector2::MONE,
+        ],
+        [
+            Vector2::MONE,
+            Vector2::new(1, -1),
+            Vector2::ZERO,
+            Vector2::new(-1, 1),
+        ],
+        [
+            Vector2::new(-1, 1),
+            Vector2::MONE,
+            Vector2::ZERO,
+            Vector2::ONE,
+        ],
+        [
+            Vector2::ONE,
+            Vector2::new(-1, 1),
+            Vector2::ZERO,
+            Vector2::new(1, -1),
+        ],
+    ];
+
+    const IRotateTable: [[Vector2; 4]; 4] = [
+        [
+            Vector2::new(2, 1),
+            Vector2::X1,
+            Vector2::MY1,
+            Vector2::new(-1, -2),
+        ],
+        [
+            Vector2::new(1, -2),
+            Vector2::MY1,
+            Vector2::MX1,
+            Vector2::new(-2, 1),
+        ],
+        [
+            Vector2::new(-2, -1),
+            Vector2::MX1,
+            Vector2::Y1,
+            Vector2::new(1, 2),
+        ],
+        [
+            Vector2::new(-2, 2),
+            Vector2::Y1,
+            Vector2::X1,
+            Vector2::new(2, -1),
+        ],
+    ];
+
+    const KickTable: [[Vector2; 5]; 4] = [
+        [
+            Vector2::ZERO,
+            Vector2::MX1,
+            Vector2::new(-1, 1),
+            Vector2::MY2,
+            Vector2::new(-1, -2),
+        ],
+        [
+            Vector2::ZERO,
+            Vector2::X1,
+            Vector2::new(1, -1),
+            Vector2::Y2,
+            Vector2::new(1, 2),
+        ],
+        [
+            Vector2::ZERO,
+            Vector2::X1,
+            Vector2::ONE,
+            Vector2::MY2,
+            Vector2::new(1, -2),
+        ],
+        [
+            Vector2::ZERO,
+            Vector2::MX1,
+            Vector2::MONE,
+            Vector2::Y2,
+            Vector2::new(-1, 2),
+        ],
+    ];
+
+    const IKickTable: [[Vector2; 5]; 4] = [
+        [
+            Vector2::ZERO,
+            Vector2::MX2,
+            Vector2::X1,
+            Vector2::new(-2, -1),
+            Vector2::new(1, 2),
+        ],
+        [
+            Vector2::ZERO,
+            Vector2::MX1,
+            Vector2::X2,
+            Vector2::new(-1, 2),
+            Vector2::new(2, -1),
+        ],
+        [
+            Vector2::ZERO,
+            Vector2::X2,
+            Vector2::MX1,
+            Vector2::new(2, 1),
+            Vector2::new(-1, -2),
+        ],
+        [
+            Vector2::ZERO,
+            Vector2::X1,
+            Vector2::MX2,
+            Vector2::new(1, -2),
+            Vector2::new(-2, 1),
+        ],
+    ];
+
+    pub fn CreateMino(&mut self, mino: i32) {
+        self._nowMino = Mino::new();
+
+        if mino == -1 {
+            self._nowMino.MinoKind = self._next[0];
+            refresh
+        } else {
+            self._nowMino.MinoKind = mino;
+        }
+        self._nowMino
+            .Init(Self::GetDefaultMinoPos(self._nowMino.MinoKind as i8));
+    }
+
+    fn GetDefaultMinoPos(kind: i8) -> i64 {
+        match kind {
+            MinoKind::I => 0318041805180618,
+            MinoKind::J => 0319031804180518,
+            MinoKind::L => 0519031804180518,
+            MinoKind::O => 0419051904180518,
+            MinoKind::S => 0419051903180418,
+            MinoKind::Z => 0319041904180518,
+            MinoKind::T => 0419031804180518,
+            _ => panic!("存在しない型"),
+        }
+    }
+
+    fn RefreshNext(nexts: [i32; 5]) {
+        for i in 0..nexts.len() - 1 {}
+    }
 }
