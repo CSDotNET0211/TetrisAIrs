@@ -1,7 +1,4 @@
-use core::ffi::c_ulong;
 use core::panic;
-use std::env::current_exe;
-use std::io::SeekFrom;
 use std::vec;
 
 use num;
@@ -519,7 +516,13 @@ impl Environment {
         let mut srs: Vector2;
 
         match action {
-            Action::MoveRight => println!(""),
+            Action::MoveRight => 
+{
+if Self::CheckValidPos(&self._field,&self._nowMino,Environment::Vector2::X1)
+{
+self.Move(Environment::Vector2::X1.x,
+}
+},
             _ => panic!("不明な型"),
         }
     }
@@ -570,6 +573,18 @@ impl Environment {
             self._score += 2;
 
             let line = Self::CheckAndClearLine(&self._field);
+self.clearedLine+=line;
+match line
+{
+	1=>self._score+=100,
+	2=>self._score+=300,
+	3=>self._score+=500,
+	4=>self._score+=800,
+	_=>panic!("invalid value");
+}
+
+self.CreateMino(-1);
+
         }
     }
 
