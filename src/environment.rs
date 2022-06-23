@@ -11,6 +11,7 @@ pub struct Vector2 {
 
 trait Revert {
     fn Revert(&self) -> Self;
+    fn Clone(&self) -> Self;
 }
 
 impl Revert for Vector2 {
@@ -18,6 +19,13 @@ impl Revert for Vector2 {
         Vector2 {
             x: -self.x,
             y: -self.y,
+        }
+    }
+
+    fn Clone(&self) -> Self {
+        Vector2 {
+            x: self.x,
+            y: self.y,
         }
     }
 }
@@ -60,10 +68,16 @@ impl Rotation {
     pub const Left: i8 = 3;
 }
 
-struct Action {}
+pub struct Action {}
 
 impl Action {
     pub const MoveRight: u32 = 0;
+    pub const MoveLeft: u32 = 1;
+    pub const RotateRight: u32 = 2;
+    pub const RotateLeft: u32 = 3;
+    pub const HardDrop: u32 = 4;
+    pub const SoftDrop: u32 = 5;
+    pub const Hold: u32 = 6;
 }
 
 pub struct Rotate {}
@@ -223,17 +237,17 @@ impl Mino {
     }
 }
 
-struct Environment {
-    _nextBag: Vec<u32>,
-    _clearedLine: isize,
-    _score: isize,
-    _deadFlag: bool,
-    _nowMino: Mino,
-    _next: [i32; 5],
-    _random: ThreadRng,
-    _field: [bool; Self::FIELD_WIDTH as usize * Self::FIELD_HEIGHT as usize],
-    _canHold: bool,
-    _nowHold: i32,
+pub struct Environment {
+    nextBag: Vec<u32>,
+    clearedLine: isize,
+    score: isize,
+    deadFlag: bool,
+    pub nowMino: Mino,
+    next: [i32; 5],
+    random: ThreadRng,
+    field: [bool; Self::FIELD_WIDTH as usize * Self::FIELD_HEIGHT as usize],
+    canHold: bool,
+    nowHold: i32,
 }
 
 impl Environment {
@@ -455,26 +469,30 @@ impl Environment {
     ];
 
     pub fn CreateMino(&mut self, mino: i32) {
-        self._nowMino = Mino::new();
+        self.nowMino = Mino::new();
 
         if mino == -1 {
-            self._nowMino.MinoKind = self._next[0];
+            self.nowMino.MinoKind = self.next[0];
             self.RefreshNext();
         } else {
-            self._nowMino.MinoKind = mino;
+            self.nowMino.MinoKind = mino;
         }
-        self._nowMino
-            .Init(Self::GetDefaultMinoPos(&self._nowMino.MinoKind));
+        self.nowMino
+            .Init(Self::GetDefaultMinoPos(&self.nowMino.MinoKind));
 
         for i in 0..4 {
-            let x = self._nowMino.GetPosition(i, true) as usize;
-            let y = self._nowMino.GetPosition(i, false) as usize;
+            let x = self.nowMino.GetPosition(i, true) as usize;
+            let y = self.nowMino.GetPosition(i, false) as usize;
 
-            if self._field[x + y * 10] {
-                self._deadFlag = true;
+            if self.field[x + y * 10] {
+                self.deadFlag = true;
                 break;
             }
         }
+    }
+
+    pub fn GetFieldRef(&self) -> &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH] {
+        &self.field
     }
 
     fn GetDefaultMinoPos(kind: &i32) -> i64 {
@@ -491,19 +509,19 @@ impl Environment {
     }
 
     fn RefreshNext(&mut self) {
-        for i in 0..self._next.len() - 1 {
-            self._next[i] = self._next[i + 1];
+        for i in 0..self.next.len() - 1 {
+            self.next[i] = self.next[i + 1];
         }
 
-        if self._nextBag.len() == 0 {
-            self._nextBag = (0..7).collect();
+        if self.nextBag.len() == 0 {
+            self.nextBag = (0..7).collect();
         }
 
-        let randomIndex = self._random.gen_range(0..self._nextBag.len());
-        let mino = self._nextBag[randomIndex];
-        self._nextBag.remove(randomIndex);
+        let randomIndex = self.random.gen_range(0..self.nextBag.len());
+        let mino = self.nextBag[randomIndex];
+        self.nextBag.remove(randomIndex);
 
-        self._next[self._next.len() - 1] = mino as i32;
+        self.next[self.next.len() - 1] = mino as i32;
     }
 
     pub fn Search() -> i64 {
@@ -512,79 +530,123 @@ impl Environment {
 
     pub fn PrintGame() {}
 
-    pub fn UserInput(action: u32) {
-        let mut srs: Vector2;
+    pub fn UserInput(&mut self, action: u32) {
+        let mut srs: Vector2 = Vector2 { x: 0, y: 0 };
 
         match action {
-            Action::MoveRight => 
-{
-if Self::CheckValidPos(&self._field,&self._nowMino,Environment::Vector2::X1)
-{
-self.Move(Environment::Vector2::X1.x,
-}
-},
+            Action::MoveRight => {
+                if Self::CheckValidPos(&self.field, &self.nowMino, &Vector2::X1, 0) {
+                    self.nowMino
+                        .Move(Vector2::X1.x as i32, Vector2::X1.y as i32);
+                }
+            }
+
+            Action::MoveLeft => {
+                if Self::CheckValidPos(&self.field, &self.nowMino, &Vector2::MX1, 0) {
+                    self.nowMino
+                        .Move(Vector2::MX1.x as i32, Vector2::MX1.y as i32);
+                }
+            }
+
+            Action::RotateRight => {
+                if Self::TryRotate(
+                    Rotate::Right as i8,
+                    &self.field,
+                    &mut self.nowMino,
+                    &mut srs,
+                ) {
+                    self.nowMino.Move(srs.x as i32, srs.y as i32);
+                    Self::SimpleRotate(Rotate::Right, &mut self.nowMino, 0);
+                }
+            }
+
+            Action::RotateLeft => {
+                if Self::TryRotate(Rotate::Left as i8, &self.field, &mut self.nowMino, &mut srs) {
+                    self.nowMino.Move(srs.x as i32, srs.y as i32);
+                    Self::SimpleRotate(Rotate::Left, &mut self.nowMino, 0);
+                }
+            }
+
+            Action::HardDrop => self.SetMino(),
+            Action::SoftDrop => loop {
+                if Self::CheckValidPos(&self.field, &self.nowMino, &Vector2::MY1, 0) {
+                    self.nowMino
+                        .Move(Vector2::MY1.x as i32, Vector2::MY1.y as i32);
+                }
+            },
+            Action::Hold => self.Hold(),
+
             _ => panic!("不明な型"),
         }
     }
 
     fn Hold(&mut self) {
-        if self._canHold {
-            self._canHold = false;
+        if self.canHold {
+            self.canHold = false;
 
-            if self._nowHold == -1 {
-                self._nowHold = self._nowMino.MinoKind;
+            if self.nowHold == -1 {
+                self.nowHold = self.nowMino.MinoKind;
                 self.CreateMino(-1);
             } else {
-                let tempNow = self._nowMino.MinoKind;
-                self.CreateMino(self._nowHold);
-                self._nowHold = tempNow;
+                let tempNow = self.nowMino.MinoKind;
+                self.CreateMino(self.nowHold);
+                self.nowHold = tempNow;
             }
         }
     }
-    fn Init(&self) {
-        self._nextBag = (0..7).collect();
+    pub fn new() -> Self {
+        Environment {
+            nextBag: (0..7).collect(),
+            clearedLine: 0,
+            score: 0,
+            deadFlag: false,
+            nowMino: Mino::new(),
+            next: [-1; 5],
+            random: rand::thread_rng(),
+            field: [false; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
+            canHold: true,
+            nowHold: -1,
+        }
+    }
 
-        for i in 0..self._next.len() {
+    pub fn Init(&mut self) {
+        for i in 0..self.next.len() {
             self.RefreshNext();
         }
-
-        self._field = [false; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT];
         self.CreateMino(-1);
     }
 
-    fn SetMino(&self) {
+    fn SetMino(&mut self) {
         while true {
-            if Self::CheckValidPos(&self._field, &self._nowMino, &Vector2::MY1, 0) {
-                self._nowMino
+            if Self::CheckValidPos(&self.field, &self.nowMino, &Vector2::MY1, 0) {
+                self.nowMino
                     .Move(Vector2::MY1.x as i32, Vector2::MY1.y as i32);
             } else {
                 break;
             }
 
-            self._canHold = true;
+            self.canHold = true;
 
             for i in 0..4 {
-                let x = self._nowMino.GetPosition(i, true);
-                let y = self._nowMino.GetPosition(i, false);
+                let x = self.nowMino.GetPosition(i, true);
+                let y = self.nowMino.GetPosition(i, false);
 
-                self._field[(x + y * 10) as usize] = true;
+                self.field[(x + y * 10) as usize] = true;
             }
 
-            self._score += 2;
+            self.score += 2;
 
-            let line = Self::CheckAndClearLine(&self._field);
-self.clearedLine+=line;
-match line
-{
-	1=>self._score+=100,
-	2=>self._score+=300,
-	3=>self._score+=500,
-	4=>self._score+=800,
-	_=>panic!("invalid value");
-}
+            let line = Self::CheckAndClearLine(&mut self.field);
+            self.clearedLine += line as isize;
+            match line {
+                1 => self.score += 100,
+                2 => self.score += 300,
+                3 => self.score += 500,
+                4 => self.score += 800,
+                _ => panic!("invalid value"),
+            }
 
-self.CreateMino(-1);
-
+            self.CreateMino(-1);
         }
     }
 
@@ -611,7 +673,7 @@ self.CreateMino(-1);
     }
 
     pub fn CheckAndClearLine(
-        field: &[bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
+        field: &mut [bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
     ) -> i32 {
         let mut values = 0;
         let mut valueCount = 0;
@@ -639,15 +701,15 @@ self.CreateMino(-1);
             }
         }
 
-        Self::DownLine(values, valueCount, &field);
+        Self::DownLine(values, valueCount, field);
 
         valueCount
     }
 
     fn DownLine(
-        value: usize,
-        valueCount: i32,
-        field: &[bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
+        mut value: usize,
+        mut valueCount: i32,
+        field: &mut [bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
     ) {
         if valueCount == 0 {
             return;
@@ -660,22 +722,29 @@ self.CreateMino(-1);
         index += 1;
         valueCount -= 1;
 
-        for y in yvalue..Environment::FIELD_HEIGHT {
-            if valueCount > 0 && y + index == value % 10 {
-                index += 1;
-                value /= 10;
-                valueCount -= 1;
-                y -= 1;
-                continue;
+        let mut y = yvalue;
+        loop {
+            if y < Environment::FIELD_HEIGHT {
+                if valueCount > 0 && y + index == value % 10 {
+                    index += 1;
+                    value /= 10;
+                    valueCount -= 1;
+                    y -= 1;
+                    continue;
+                }
+
+                for x in 0..Environment::FIELD_WIDTH {
+                    if y + index >= Environment::FIELD_HEIGHT {
+                        field[(x + y * 10) as usize] = false;
+                    } else {
+                        field[(x + y * 10) as usize] = field[(x + (y + index) * 10) as usize];
+                    }
+                }
+
+                y += 1;
             }
 
-            for x in 0..Environment::FIELD_WIDTH {
-                if y + index >= Environment::FIELD_HEIGHT {
-                    field[(x + y * 10) as usize] = false;
-                } else {
-                    field[(x + y * 10) as usize] = field[(x + (y + index) * 10) as usize];
-                }
-            }
+            break;
         }
     }
 
@@ -694,14 +763,14 @@ self.CreateMino(-1);
     pub fn TryRotate(
         rotate: i8,
         field: &[bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
-        current: &Mino,
-        srspos: &Vector2,
+        current: &mut Mino,
+        mut srspos: &mut Vector2,
     ) -> bool {
         if current.MinoKind == MinoKind::O as i32 {
             return false;
         }
 
-        Self::SimpleRotate(rotate as i32, &current, 5);
+        Self::SimpleRotate(rotate as i32, current, 5);
 
         if rotate == Rotate::Left as i8 {
             for i in 0..5 {
@@ -713,7 +782,7 @@ self.CreateMino(-1);
                         -5,
                     ) {
                         *srspos = Environment::IKickTable[current.Rotation as usize][i].Revert();
-                        Self::SimpleRotate(Rotate::Right, &current, -5);
+                        Self::SimpleRotate(Rotate::Right, current, -5);
                         return true;
                     }
                 } else {
@@ -724,13 +793,13 @@ self.CreateMino(-1);
                         -5,
                     ) {
                         *srspos = Self::KickTable[current.Rotation as usize][i].Revert();
-                        Self::SimpleRotate(Rotate::Right, &current, -5);
+                        Self::SimpleRotate(Rotate::Right, current, -5);
                         return true;
                     }
                 }
             }
 
-            Self::SimpleRotate(Rotate::Right, &current, -5);
+            Self::SimpleRotate(Rotate::Right, current, -5);
             return false;
         } else if rotate == Rotate::Right as i8 {
             let beforeRotate = current.Rotation;
@@ -743,8 +812,8 @@ self.CreateMino(-1);
                         &Self::IKickTable[beforeRotate as usize][i],
                         -5,
                     ) {
-                        Self::SimpleRotate(Rotate::Left, &current, -5);
-                        *srspos = Self::IKickTable[beforeRotate as usize][i];
+                        Self::SimpleRotate(Rotate::Left, current, -5);
+                        *srspos = Self::IKickTable[beforeRotate as usize][i].Clone();
                         return true;
                     }
                 } else {
@@ -754,21 +823,21 @@ self.CreateMino(-1);
                         &Self::KickTable[beforeRotate as usize][i],
                         -5,
                     ) {
-                        Self::SimpleRotate(Rotate::Left, &current, -5);
-                        *srspos = Self::KickTable[beforeRotate as usize][i];
+                        Self::SimpleRotate(Rotate::Left, current, -5);
+                        *srspos = Self::KickTable[beforeRotate as usize][i].Clone();
                         return true;
                     }
                 }
             }
 
-            Self::SimpleRotate(Rotate::Left, &current, -5);
+            Self::SimpleRotate(Rotate::Left, current, -5);
             return false;
         } else {
             panic!("そんな回転は存在しない");
         }
     }
 
-    fn SimpleRotate(rotate: i32, mino: &Mino, addtemp: i32) {
+    fn SimpleRotate(rotate: i32, mino: &mut Mino, addtemp: i32) {
         let mut movePos;
         mino.Move(addtemp, addtemp);
 
@@ -784,9 +853,9 @@ self.CreateMino(-1);
 
         mino.MoveForSRS(movePos, rotate, mino.Rotation);
 
-        GetNextRotate(rotate, &mino.Rotation);
+        GetNextRotate(rotate, &mut mino.Rotation);
 
-        fn GetNextRotate(rotate: i32, rotation: &i32) {
+        fn GetNextRotate(rotate: i32, rotation: &mut i32) {
             if rotate == Rotate::Right {
                 *rotation += 1;
                 if *rotation == Rotation::Left as i32 + 1 {
