@@ -1,5 +1,6 @@
 use core::panic;
 use rand::prelude::*;
+
 pub struct Vector2 {
     pub x: i32,
     pub y: i32,
@@ -44,7 +45,7 @@ impl Vector2 {
     }
 }
 
-struct MinoKind {}
+pub struct MinoKind {}
 impl MinoKind {
     pub const S: i8 = 0;
     pub const Z: i8 = 1;
@@ -55,7 +56,7 @@ impl MinoKind {
     pub const T: i8 = 6;
 }
 
-struct Rotation {}
+pub struct Rotation {}
 
 impl Rotation {
     pub const ZERO: i8 = 0;
@@ -81,6 +82,8 @@ impl Rotate {
     const RIGHT: i8 = 0;
     const LEFT: i8 = 1;
 }
+
+#[derive(Clone)]
 pub struct Mino {
     pub mino_kind: i8,
     pub rotation: i8,
@@ -106,7 +109,7 @@ impl Mino {
         self.rotation = Rotation::ZERO;
     }
 
-    pub fn Move(&mut self, x: i32, y: i32) {
+    pub fn move_pos(&mut self, x: i32, y: i32) {
         if x != i32::MAX {
             for i in 0..4 {
                 Self::add_position(&mut self.position, x.into(), i, true);
@@ -176,7 +179,7 @@ impl Mino {
         }
     }
 
-    pub fn add_position(array: &mut i64, mut value: i64, mut index: u32, is_x: bool) {
+    fn add_position(array: &mut i64, mut value: i64, mut index: u32, is_x: bool) {
         if index == u32::MAX {
             index = 0;
         } else {
@@ -204,7 +207,6 @@ impl Mino {
 
             *array += temp as i64;
         }
-        //   value += x * 100;
     }
 
     pub fn get_position(&self, mut index: i32, is_x: bool) -> i32 {
@@ -524,7 +526,7 @@ impl Environment {
         self.next[self.next.len() - 1] = mino;
     }
 
-    pub fn search() -> i64 {
+    pub fn search(&self) -> i64 {
         0
     }
 
@@ -537,14 +539,14 @@ impl Environment {
             Action::MOVE_RIGHT => {
                 if Self::check_valid_pos(&self.field, &self.now_mino, &Vector2::X1, 0) {
                     self.now_mino
-                        .Move(Vector2::X1.x as i32, Vector2::X1.y as i32);
+                        .move_pos(Vector2::X1.x as i32, Vector2::X1.y as i32);
                 }
             }
 
             Action::MOVE_LEFT => {
                 if Self::check_valid_pos(&self.field, &self.now_mino, &Vector2::MX1, 0) {
                     self.now_mino
-                        .Move(Vector2::MX1.x as i32, Vector2::MX1.y as i32);
+                        .move_pos(Vector2::MX1.x as i32, Vector2::MX1.y as i32);
                 }
             }
 
@@ -555,7 +557,7 @@ impl Environment {
                     &mut self.now_mino,
                     &mut srs,
                 ) {
-                    self.now_mino.Move(srs.x as i32, srs.y as i32);
+                    self.now_mino.move_pos(srs.x as i32, srs.y as i32);
                     Self::simple_rotate(Rotate::RIGHT, &mut self.now_mino, 0);
                 }
             }
@@ -567,7 +569,7 @@ impl Environment {
                     &mut self.now_mino,
                     &mut srs,
                 ) {
-                    self.now_mino.Move(srs.x as i32, srs.y as i32);
+                    self.now_mino.move_pos(srs.x as i32, srs.y as i32);
                     Self::simple_rotate(Rotate::LEFT, &mut self.now_mino, 0);
                 }
             }
@@ -578,7 +580,7 @@ impl Environment {
             Action::SOFT_DROP => loop {
                 if Self::check_valid_pos(&self.field, &self.now_mino, &Vector2::MY1, 0) {
                     self.now_mino
-                        .Move(Vector2::MY1.x as i32, Vector2::MY1.y as i32);
+                        .move_pos(Vector2::MY1.x as i32, Vector2::MY1.y as i32);
                 } else {
                     break;
                 }
@@ -629,7 +631,7 @@ impl Environment {
         loop {
             if Self::check_valid_pos(&self.field, &self.now_mino, &Vector2::MY1, 0) {
                 self.now_mino
-                    .Move(Vector2::MY1.x as i32, Vector2::MY1.y as i32);
+                    .move_pos(Vector2::MY1.x as i32, Vector2::MY1.y as i32);
             } else {
                 break;
             }
@@ -847,7 +849,7 @@ impl Environment {
 
     fn simple_rotate(rotate: i8, mino: &mut Mino, addtemp: i32) {
         let move_pos;
-        mino.Move(addtemp, addtemp);
+        mino.move_pos(addtemp, addtemp);
 
         match mino.mino_kind as i8 {
             MinoKind::J => move_pos = Environment::JROTATE_TABLE,

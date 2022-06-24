@@ -1,10 +1,11 @@
+mod Search;
 mod draw;
 mod environment;
-use ::console::Key;
+mod search;
+
 use draw::print;
 use environment::{Action, Environment};
-use rawkey::{KeyCode, RawKey};
-use std::{thread, time};
+use std::time;
 use winconsole::console::{self, getch};
 
 fn main() {
@@ -31,7 +32,7 @@ fn main() {
                 environment.init();
             }
 
-            _ => panic!("a"),
+            _ => continue,
         }
         //   thread::sleep(sleeptime);
         /*
