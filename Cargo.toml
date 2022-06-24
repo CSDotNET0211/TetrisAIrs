@@ -13,6 +13,7 @@ rand = "0.8.5"
 crossterm_cursor = "0.4.0"
 console = "0.15.0"
 # winconsole = "0.11.1"
+rawkey = "*"
 
 
 [dependencies.winconsole]

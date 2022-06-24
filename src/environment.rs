@@ -1,8 +1,8 @@
 use core::panic;
 use rand::prelude::*;
 pub struct Vector2 {
-    pub x: isize,
-    pub y: isize,
+    pub x: i32,
+    pub y: i32,
 }
 
 trait Revert {
@@ -39,7 +39,7 @@ impl Vector2 {
     pub const Y2: Vector2 = Self::new(0, 2);
     pub const MY2: Vector2 = Self::new(0, -2);
 
-    pub const fn new(x: isize, y: isize) -> Vector2 {
+    pub const fn new(x: i32, y: i32) -> Vector2 {
         Vector2 { x: x, y: y }
     }
 }
@@ -67,23 +67,23 @@ impl Rotation {
 pub struct Action {}
 
 impl Action {
-    pub const MOVE_RIGHT: u32 = 0;
-    pub const MOVE_LEFT: u32 = 1;
-    pub const ROTATE_RIGHT: u32 = 2;
-    pub const ROTATE_LEFT: u32 = 3;
-    pub const HARD_DROP: u32 = 4;
-    pub const SOFT_DROP: u32 = 5;
-    pub const HOLD: u32 = 6;
+    pub const MOVE_RIGHT: i8 = 0;
+    pub const MOVE_LEFT: i8 = 1;
+    pub const ROTATE_RIGHT: i8 = 2;
+    pub const ROTATE_LEFT: i8 = 3;
+    pub const HARD_DROP: i8 = 4;
+    pub const SOFT_DROP: i8 = 5;
+    pub const HOLD: i8 = 6;
 }
 
 pub struct Rotate {}
 impl Rotate {
-    const RIGHT: i32 = 0;
-    const LEFT: i32 = 1;
+    const RIGHT: i8 = 0;
+    const LEFT: i8 = 1;
 }
 pub struct Mino {
-    pub mino_kind: i32,
-    pub rotation: i32,
+    pub mino_kind: i8,
+    pub rotation: i8,
     pub position: i64,
 }
 
@@ -92,7 +92,7 @@ impl Mino {
         Mino {
             mino_kind: -1,
             position: -1,
-            rotation: Rotation::ZERO as i32,
+            rotation: Rotation::ZERO,
         }
     }
 
@@ -103,7 +103,7 @@ impl Mino {
             self.position = position;
         }
 
-        self.rotation = Rotation::ZERO as i32;
+        self.rotation = Rotation::ZERO;
     }
 
     pub fn Move(&mut self, x: i32, y: i32) {
@@ -120,35 +120,55 @@ impl Mino {
         }
     }
 
-    pub fn move_for_srs(&mut self, srstest: &[[Vector2; 4]; 4], rotate: i32, rotation: i32) {
+    pub fn move_for_srs(&mut self, srstest: &[[Vector2; 4]; 4], rotate: i8, rotation: i8) {
         if rotate == Rotate::RIGHT {
-            let value = rotation as usize;
+            let value = rotation;
 
             for i in 0..4 {
-                Self::add_position(&mut self.position, srstest[value][i].x as i64, i, true);
-                Self::add_position(&mut self.position, srstest[value][i].y as i64, i, false);
+                Self::add_position(
+                    &mut self.position,
+                    srstest[value as usize][i].x as i64,
+                    i as u32,
+                    true,
+                );
+                Self::add_position(
+                    &mut self.position,
+                    srstest[value as usize][i].y as i64,
+                    i as u32,
+                    false,
+                );
             }
         } else {
             let value = rotate_enum(rotate, rotation) as usize;
 
             for i in 0..4 {
-                Self::add_position(&mut self.position, -srstest[value][i].x as i64, i, true);
-                Self::add_position(&mut self.position, -srstest[value][i].y as i64, i, false);
+                Self::add_position(
+                    &mut self.position,
+                    -srstest[value][i].x as i64,
+                    i as u32,
+                    true,
+                );
+                Self::add_position(
+                    &mut self.position,
+                    -srstest[value][i].y as i64,
+                    i as u32,
+                    false,
+                );
             }
         }
 
-        fn rotate_enum(rotate1: i32, mut rotation: i32) -> i32 {
+        fn rotate_enum(rotate1: i8, mut rotation: i8) -> i8 {
             if rotate1 == Rotate::RIGHT {
                 rotation += 1;
 
-                if rotation == Rotation::LEFT as i32 + 1 {
-                    rotation = Rotation::ZERO as i32;
+                if rotation == Rotation::LEFT + 1 {
+                    rotation = Rotation::ZERO;
                 }
             } else {
                 rotation -= 1;
 
-                if rotation == Rotation::ZERO as i32 - 1 {
-                    rotation = Rotation::LEFT as i32;
+                if rotation == Rotation::ZERO - 1 {
+                    rotation = Rotation::LEFT;
                 }
             }
 
@@ -156,14 +176,14 @@ impl Mino {
         }
     }
 
-    pub fn add_position(array: &mut i64, mut value: i64, mut index: usize, is_x: bool) {
-        if index == usize::MAX {
+    pub fn add_position(array: &mut i64, mut value: i64, mut index: u32, is_x: bool) {
+        if index == u32::MAX {
             index = 0;
         } else {
             index = 4 - index - 1;
         }
 
-        for i in 0..4 * index {
+        for _i in 0..4 * index {
             value *= 10;
         }
         if is_x {
@@ -187,7 +207,7 @@ impl Mino {
         //   value += x * 100;
     }
 
-    pub fn get_position(&self, mut index: i32, isX: bool) -> i32 {
+    pub fn get_position(&self, mut index: i32, is_x: bool) -> i32 {
         if index == i32::MAX {
             index = 0;
         } else {
@@ -195,19 +215,19 @@ impl Mino {
         }
 
         let mut value = self.position;
-        for i in 0..index {
+        for _i in 0..index {
             value /= 10000;
         }
         value %= 10000;
 
-        if isX {
+        if is_x {
             value as i32 / 100
         } else {
             value as i32 % 100
         }
     }
 
-    pub fn get_position_from_value(mut value: i64, mut index: i32, isX: bool) -> i32 {
+    pub fn get_position_from_value(mut value: i64, mut index: i32, is_x: bool) -> i32 {
         if index == i32::MAX {
             index = 0;
         } else {
@@ -219,7 +239,7 @@ impl Mino {
         }
         value %= 10000;
 
-        if isX {
+        if is_x {
             value as i32 / 100
         } else {
             value as i32 % 100
@@ -228,16 +248,16 @@ impl Mino {
 }
 
 pub struct Environment {
-    next_bag: Vec<u32>,
+    next_bag: Vec<i8>,
     cleared_line: isize,
     score: isize,
     dead_flag: bool,
     pub now_mino: Mino,
-    next: [i32; 5],
+    next: [i8; 5],
     random: ThreadRng,
     field: [bool; Self::FIELD_WIDTH as usize * Self::FIELD_HEIGHT as usize],
     can_hold: bool,
-    now_hold: i32,
+    now_hold: i8,
 }
 
 impl Environment {
@@ -417,37 +437,6 @@ impl Environment {
         ],
     ];
 
-    const KICK_TABLE_REVERCE: [[Vector2; 5]; 4] = [
-        [
-            Vector2::ZERO,
-            Vector2::MX1,
-            Vector2::new(-1, 1),
-            Vector2::MY2,
-            Vector2::new(-1, -2),
-        ],
-        [
-            Vector2::ZERO,
-            Vector2::X1,
-            Vector2::new(1, -1),
-            Vector2::Y2,
-            Vector2::new(1, 2),
-        ],
-        [
-            Vector2::ZERO,
-            Vector2::X1,
-            Vector2::ONE,
-            Vector2::MY2,
-            Vector2::new(1, -2),
-        ],
-        [
-            Vector2::ZERO,
-            Vector2::MX1,
-            Vector2::MONE,
-            Vector2::Y2,
-            Vector2::new(-1, 2),
-        ],
-    ];
-
     const IKICK_TABLE: [[Vector2; 5]; 4] = [
         [
             Vector2::ZERO,
@@ -479,7 +468,7 @@ impl Environment {
         ],
     ];
 
-    pub fn create_mino(&mut self, mino: i32) {
+    pub fn create_mino(&mut self, mino: i8) {
         self.now_mino = Mino::new();
 
         if mino == -1 {
@@ -506,7 +495,7 @@ impl Environment {
         &self.field
     }
 
-    fn get_default_mino_pos(kind: &i32) -> i64 {
+    fn get_default_mino_pos(kind: &i8) -> i64 {
         match *kind as i8 {
             MinoKind::I => 0318041805180618,
             MinoKind::J => 0319031804180518,
@@ -532,7 +521,7 @@ impl Environment {
         let mino = self.next_bag[random_index];
         self.next_bag.remove(random_index);
 
-        self.next[self.next.len() - 1] = mino as i32;
+        self.next[self.next.len() - 1] = mino;
     }
 
     pub fn search() -> i64 {
@@ -541,7 +530,7 @@ impl Environment {
 
     pub fn print_game() {}
 
-    pub fn user_input(&mut self, action: u32) {
+    pub fn user_input(&mut self, action: i8) {
         let mut srs: Vector2 = Vector2 { x: 0, y: 0 };
 
         match action {
@@ -678,13 +667,13 @@ impl Environment {
         add: i32,
     ) -> bool {
         for i in 0..4 {
-            let x = (mino.get_position(i, true) + add) as isize;
-            let y = (mino.get_position(i, false) + add) as isize;
+            let x = mino.get_position(i, true) + add;
+            let y = mino.get_position(i, false) + add;
 
-            if !(x + try_move.x < Environment::FIELD_WIDTH as isize
+            if !(x + try_move.x < Environment::FIELD_WIDTH as i32
                 && x + try_move.x >= 0
                 && y + try_move.y >= 0
-                && y + try_move.y < Environment::FIELD_HEIGHT as isize
+                && y + try_move.y < Environment::FIELD_HEIGHT as i32
                 && !field[((x + try_move.x) + (y + try_move.y) * 10) as usize])
             {
                 return false;
@@ -771,15 +760,14 @@ impl Environment {
     pub fn get_eval(_values: &[f32]) -> f32 {
         0.0
     }
-    /*
 
-    pub fn create_mino1(mino: i32) -> Mino {
+    pub fn create_mino_1(mino: i8) -> Mino {
         Mino {
             mino_kind: mino,
-            rotation: Rotation::ZERO as i32,
+            rotation: Rotation::ZERO,
             position: Self::get_default_mino_pos(&mino),
         }
-    }*/
+    }
 
     pub fn try_rotate(
         rotate: i8,
@@ -787,15 +775,16 @@ impl Environment {
         current: &mut Mino,
         srspos: &mut Vector2,
     ) -> bool {
-        if current.mino_kind == MinoKind::O as i32 {
+        if current.mino_kind == MinoKind::O {
             return false;
         }
 
-        Self::simple_rotate(rotate as i32, current, 5);
+        let before_rotate = current.rotation;
+        Self::simple_rotate(rotate, current, 5);
 
         if rotate == Rotate::LEFT as i8 {
             for i in 0..5 {
-                if current.mino_kind == MinoKind::I as i32 {
+                if current.mino_kind == MinoKind::I {
                     if Self::check_valid_pos(
                         &field,
                         &current,
@@ -823,10 +812,8 @@ impl Environment {
             Self::simple_rotate(Rotate::RIGHT, current, -5);
             return false;
         } else if rotate == Rotate::RIGHT as i8 {
-            let before_rotate = current.rotation;
-
             for i in 0..5 {
-                if current.mino_kind == MinoKind::I as i32 {
+                if current.mino_kind == MinoKind::I {
                     if Self::check_valid_pos(
                         &field,
                         &current,
@@ -858,7 +845,7 @@ impl Environment {
         }
     }
 
-    fn simple_rotate(rotate: i32, mino: &mut Mino, addtemp: i32) {
+    fn simple_rotate(rotate: i8, mino: &mut Mino, addtemp: i32) {
         let move_pos;
         mino.Move(addtemp, addtemp);
 
@@ -876,16 +863,16 @@ impl Environment {
 
         get_next_rotate(rotate, &mut mino.rotation);
 
-        fn get_next_rotate(rotate: i32, rotation: &mut i32) {
+        fn get_next_rotate(rotate: i8, rotation: &mut i8) {
             if rotate == Rotate::RIGHT {
                 *rotation += 1;
-                if *rotation == Rotation::LEFT as i32 + 1 {
-                    *rotation = Rotation::ZERO as i32;
+                if *rotation == Rotation::LEFT + 1 {
+                    *rotation = Rotation::ZERO;
                 }
             } else {
                 *rotation -= 1;
-                if *rotation == Rotation::ZERO as i32 - 1 {
-                    *rotation = Rotation::LEFT as i32;
+                if *rotation == Rotation::ZERO - 1 {
+                    *rotation = Rotation::LEFT;
                 }
             }
         }
