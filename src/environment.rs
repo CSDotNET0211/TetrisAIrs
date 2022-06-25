@@ -79,8 +79,8 @@ impl Action {
 
 pub struct Rotate {}
 impl Rotate {
-    const RIGHT: i8 = 0;
-    const LEFT: i8 = 1;
+    pub const RIGHT: i8 = 0;
+    pub const LEFT: i8 = 1;
 }
 
 #[derive(Clone)]
@@ -847,7 +847,7 @@ impl Environment {
         }
     }
 
-    fn simple_rotate(rotate: i8, mino: &mut Mino, addtemp: i32) {
+    pub fn simple_rotate(rotate: i8, mino: &mut Mino, addtemp: i32) {
         let move_pos;
         mino.move_pos(addtemp, addtemp);
 
@@ -863,19 +863,19 @@ impl Environment {
 
         mino.move_for_srs(&move_pos, rotate, mino.rotation);
 
-        get_next_rotate(rotate, &mut mino.rotation);
+        Self::get_next_rotate(rotate, &mut mino.rotation);
+    }
 
-        fn get_next_rotate(rotate: i8, rotation: &mut i8) {
-            if rotate == Rotate::RIGHT {
-                *rotation += 1;
-                if *rotation == Rotation::LEFT + 1 {
-                    *rotation = Rotation::ZERO;
-                }
-            } else {
-                *rotation -= 1;
-                if *rotation == Rotation::ZERO - 1 {
-                    *rotation = Rotation::LEFT;
-                }
+    pub fn get_next_rotate(rotate: i8, rotation: &mut i8) {
+        if rotate == Rotate::RIGHT {
+            *rotation += 1;
+            if *rotation == Rotation::LEFT + 1 {
+                *rotation = Rotation::ZERO;
+            }
+        } else {
+            *rotation -= 1;
+            if *rotation == Rotation::ZERO - 1 {
+                *rotation = Rotation::LEFT;
             }
         }
     }

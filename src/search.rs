@@ -30,7 +30,7 @@ pub struct Search {}
 
 impl Search {
     fn Search(
-        mino: &Mino,
+        mino: &mut Mino,
         field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
         move_count: i32,
         move_value: i64,
@@ -60,6 +60,7 @@ impl Search {
                 //  let hash=
             }
 
+            //左移動
             if lock_direction != Action::MOVE_RIGHT
                 && Environment::check_valid_pos(&field, &mino, &Vector2::MX1, 0)
             {
@@ -81,20 +82,108 @@ impl Search {
                     }
 
                     Self::Search(
-                        &newmino,
+                        &mut newmino,
                         &field,
-                        move_count,
-                        move_value + 1,
+                        move_count + 1,
+                        move_value + temp,
                         &before_eval,
                         Action::MOVE_LEFT,
                         rotate_count,
                         passedTreeRouteSet,
-                    )
+                    );
                 }
+            }
+            //右移動
+            if lock_direction != Action::MOVE_LEFT
+                && Environment::check_valid_pos(&field, &mino, &Vector2::X1, 0)
+            {
+                let mut newmino = mino.clone();
 
-                if lock_direction != Action::MOVE_LEFT
-                    && Environment::check_valid_pos(&field, &mino, &Vector2::X1, 0)
-                {
+                if !Self::IsPassedBefore(
+                    newmino.mino_kind,
+                    mino.position,
+                    Vector2::X1.x,
+                    Vector2::X1.y,
+                    mino.rotation,
+                    true,
+                    passedTreeRouteSet,
+                ) {
+                    newmino.move_pos(Vector2::X1.x, Vector2::X1.y);
+
+                    let mut temp = Action::MOVE_RIGHT as i64;
+                    for _i in 0..move_count {
+                        temp *= 10;
+                    }
+
+                    Self::Search(
+                        &mut newmino,
+                        &field,
+                        move_count + 1,
+                        move_value + temp,
+                        &before_eval,
+                        Action::MOVE_LEFT,
+                        rotate_count,
+                        passedTreeRouteSet,
+                    );
+                }
+            }
+
+            let mut result = Vector2::ZERO;
+            //右回転
+            if rotate_count < 3 && Environment::try_rotate(Rotate::RIGHT, &field, mino, &mut result)
+            {
+                let mut newmino = mino.clone();
+                let mut newrotation = newmino.rotation;
+                Environment::get_next_rotate(Rotate::RIGHT, &mut newrotation);
+
+                if !Self::IsPassedBefore(
+                    newmino.mino_kind,
+                    newmino.position,
+                    result.x,
+                    result.y,
+                    newrotation,
+                    true,
+                    passedTreeRouteSet,
+                ) {
+                    newmino.move_pos(result.x, result.y);
+                    Environment::simple_rotate(Rotate::RIGHT, &mut newmino, 0);
+
+                    let mut temp = Action::ROTATE_RIGHT as i64;
+                    for _i in 0..move_count {
+                        temp *= 10;
+                    }
+
+                    Self::Search(
+                        &mut newmino,
+                        &field,
+                        move_count + 1,
+                        move_value + temp,
+                        &before_eval,
+                        lock_direction,
+                        rotate_count + 1,
+                        passedTreeRouteSet,
+                    );
+                }
+            }
+
+            //左回転
+            if rotate_count < 3 && Environment::try_rotate(Rotate::LEFT, &field, mino, &mut result)
+            {
+                let mut newmino = mino.clone();
+                let mut newrotation = newmino.rotation;
+                Environment::get_next_rotate(Rotate::LEFT, &mut newrotation);
+
+                if !Self::IsPassedBefore(
+                    newmino.mino_kind,
+                    newmino.position,
+                    result.x,
+                    result.y,
+                    newrotation,
+                    true,
+                    passedTreeRouteSet,
+                ) {
+                    newmino.move_pos(result.x, result.y);
+                    Environment::simple_rotate(Rotate::LEFT, &mut newmino, 0);
                 }
             }
         }
@@ -103,13 +192,13 @@ impl Search {
     fn IsPassedBefore(
         kind: i8,
         mut pos: i64,
-        x: i32,
-        y: i32,
+        x_diff: i32,
+        y_diff: i32,
         newrotation: i8,
         apply_history: bool,
         passedTreeRouteSet: &mut HashSet<i64>,
     ) -> bool {
-        Mino::add_position_xy(&mut pos, x, y);
+        Mino::add_position_xy(&mut pos, x_diff, y_diff);
 
         let hash = Self::GetHashForPosition(kind, newrotation, &pos);
         let result = passedTreeRouteSet.contains(&hash);
@@ -126,7 +215,7 @@ impl Search {
 
     fn GetHashForPosition(kind: i8, rotation: i8, hash: &i64) -> i64 {
         if rotation == Rotation::ZERO {
-            hash;
+            return *hash;
         }
 
         match kind {
