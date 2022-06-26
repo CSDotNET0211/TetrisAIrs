@@ -10,10 +10,11 @@ edition = "2021"
 [dependencies]
 num = "*"
 rand = "0.8.5"
-crossterm_cursor = "0.4.0"
 console = "0.15.0"
 # winconsole = "0.11.1"
 rawkey = "*"
+crossterm = "*"
+num_cpus="*"
 
 
 [dependencies.winconsole]

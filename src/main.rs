@@ -1,9 +1,14 @@
+mod Search;
 mod draw;
 mod environment;
+mod evaluation;
+mod grobaldata;
 mod search;
 
 use draw::print;
 use environment::{Action, Environment};
+use grobaldata::GrobalData;
+use num_cpus;
 use std::time;
 use winconsole::console::{self, getch};
 
@@ -12,6 +17,7 @@ fn main() {
     environment.init();
     let sleeptime = time::Duration::from_millis(30);
     let frame_time = time::Duration::from_millis(1000 / 30);
+    let mut GrobalData = GrobalData::new(num_cpus::get() as u32);
 
     console::clear().unwrap();
     loop {
@@ -33,22 +39,5 @@ fn main() {
 
             _ => continue,
         }
-        //   thread::sleep(sleeptime);
-        /*
-        if input::is_key_down(input::KeyCode::Right) {
-            environment.user_input(Action::MOVE_RIGHT);
-        } else if input::is_key_down(input::KeyCode::Left) {
-            environment.user_input(Action::MOVE_LEFT);
-        } else if input::is_key_down(input::KeyCode::Up) {
-            environment.user_input(Action::HARD_DROP);
-        } else if input::is_key_down(input::KeyCode::Down) {
-            environment.user_input(Action::SOFT_DROP);
-        } else if input::is_key_down(input::KeyCode::X) {
-            environment.user_input(Action::ROTATE_RIGHT);
-        } else if input::is_key_down(input::KeyCode::Z) {
-            environment.user_input(Action::ROTATE_LEFT);
-        } */
-
-        //    println!(value);
     }
 }
