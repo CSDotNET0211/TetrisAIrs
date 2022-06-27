@@ -52,13 +52,15 @@ impl Evaluation {
                 grobal_data.data[*index].row_height[_x] = -1;
             }
         }
-        grobal_data.data[*index].heights_without_ido.clear();
-        grobal_data.data[*index]
-            .heights_without_ido
-            .extend_from_slice(&(grobal_data.data[*index].row_height));
-        grobal_data.data[*index]
-            .heights_without_ido
-            .remove(smallest_index as usize);
+        {
+            grobal_data.data[*index].heights_without_ido.clear();
+            grobal_data.data[*index]
+                .heights_without_ido
+                .extend(grobal_data.data[*index].row_height.iter().clone());
+            grobal_data.data[*index]
+                .heights_without_ido
+                .remove(smallest_index as usize);
+        }
 
         let mut sum_of_height = grobal_data.data[*index].row_height.iter().sum::<i32>();
         let mut hole_count = 0;

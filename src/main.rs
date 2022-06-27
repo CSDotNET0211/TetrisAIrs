@@ -1,3 +1,4 @@
+mod Search;
 mod draw;
 mod environment;
 mod evaluation;

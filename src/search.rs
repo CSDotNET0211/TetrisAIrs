@@ -5,6 +5,7 @@ use crate::evaluation::*;
 use crate::grobaldata::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::ops::IndexMut;
 
 pub struct Pattern {
     pub Move: i64,
@@ -81,10 +82,17 @@ impl Search {
             let mut value: Pattern;
             //  let hash=
 
-            let result = grobal_data.data[*task_index].searched_data.get(&hash);
+            let hashmap = grobal_data.data.index_mut(*task_index);
+            if let Some(r) = hashmap.searched_data.get(&hash) {
+                Some(r)
+            } else {
+                None
+            }
+
+            //  let mut result;
 
             if result.is_some() {
-                grobal_data.data[*task_index].searched_data.remove(&hash);
+                hashmap.searched_data.remove(&hash);
 
                 let result = result.unwrap();
 
@@ -97,7 +105,7 @@ impl Search {
                     .searched_data
                     .insert(hash, *result);
             } else {
-                let pattern = Pattern::new();
+                let mut pattern = Pattern::new();
                 pattern.Position = newmino.position;
                 pattern.MoveCount = move_count;
                 pattern.Move = move_value + new_move_diff as i64;
