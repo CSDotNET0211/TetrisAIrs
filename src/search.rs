@@ -1,17 +1,17 @@
+use crate::environment;
 use crate::environment::*;
+use crate::evaluation;
 use crate::evaluation::*;
 use crate::grobaldata::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::f32::consts::E;
-use std::str::pattern;
 
 pub struct Pattern {
-    Move: i64,
-    Position: i64,
-    Eval: f64,
-    MoveCount: i32,
-    FieldIndex: i32,
+    pub Move: i64,
+    pub Position: i64,
+    pub Eval: f64,
+    pub MoveCount: i32,
+    pub FieldIndex: i32,
 }
 
 impl Pattern {
@@ -52,8 +52,8 @@ impl Search {
         before_eval: &f64,
         lock_direction: i8,
         rotate_count: i32,
-        passed_tree_route_set: &mut HashSet<i64>,
-        searched_data: &mut HashMap<i64, Pattern>,
+        grobal_data: &mut GrobalData,
+        task_index: &usize,
     ) {
         //ハードドロップ
         {
@@ -81,10 +81,11 @@ impl Search {
             let mut value: Pattern;
             //  let hash=
 
-            let result = searched_data.get(&hash);
+            let result = grobal_data.data[*task_index].searched_data.get(&hash);
 
             if result.is_some() {
-                searched_data.remove(&hash);
+                grobal_data.data[*task_index].searched_data.remove(&hash);
+
                 let result = result.unwrap();
 
                 if result.MoveCount > move_count {
@@ -92,7 +93,9 @@ impl Search {
                     result.Move = move_value + new_move_diff as i64;
                 }
 
-                searched_data.insert(hash, *result);
+                grobal_data.data[*task_index]
+                    .searched_data
+                    .insert(hash, *result);
             } else {
                 let pattern = Pattern::new();
                 pattern.Position = newmino.position;
@@ -111,12 +114,10 @@ impl Search {
                 let clearedLine = Environment::check_and_clear_line(&mut fieldclone);
                 pattern.Eval = Evaluation::Evaluate(
                     &fieldclone,
-                    &new,
-                    cleared_line,
-                    rowheight,
-                    weight,
-                    hole_eval,
-                    heigts_without_ido,
+                    &newmino,
+                    clearedLine,
+                    grobal_data,
+                    task_index,
                 )
             }
         }
@@ -133,7 +134,7 @@ impl Search {
                 Vector2::MX1.y,
                 mino.rotation,
                 true,
-                passed_tree_route_set,
+                &mut grobal_data.data[*task_index].passed_tree_route_set,
             ) {
                 newmino.move_pos(Vector2::MX1.x, Vector2::MX1.y);
                 let mut temp = Action::MOVE_LEFT as i64;
@@ -149,7 +150,8 @@ impl Search {
                     &before_eval,
                     Action::MOVE_LEFT,
                     rotate_count,
-                    passed_tree_route_set,
+                    grobal_data,
+                    task_index,
                 );
             }
         }
@@ -166,7 +168,7 @@ impl Search {
                 Vector2::X1.y,
                 mino.rotation,
                 true,
-                passed_tree_route_set,
+                &mut grobal_data.data[*task_index].passed_tree_route_set,
             ) {
                 newmino.move_pos(Vector2::X1.x, Vector2::X1.y);
 
@@ -183,7 +185,8 @@ impl Search {
                     &before_eval,
                     Action::MOVE_LEFT,
                     rotate_count,
-                    passed_tree_route_set,
+                    grobal_data,
+                    task_index,
                 );
             }
         }
@@ -202,7 +205,7 @@ impl Search {
                 result.y,
                 newrotation,
                 true,
-                passed_tree_route_set,
+                &mut grobal_data.data[*task_index].passed_tree_route_set,
             ) {
                 newmino.move_pos(result.x, result.y);
                 Environment::simple_rotate(Rotate::RIGHT, &mut newmino, 0);
@@ -220,7 +223,8 @@ impl Search {
                     &before_eval,
                     lock_direction,
                     rotate_count + 1,
-                    passed_tree_route_set,
+                    grobal_data,
+                    task_index,
                 );
             }
         }
@@ -238,7 +242,7 @@ impl Search {
                 result.y,
                 newrotation,
                 true,
-                passed_tree_route_set,
+                &mut grobal_data.data[*task_index].passed_tree_route_set,
             ) {
                 newmino.move_pos(result.x, result.y);
                 Environment::simple_rotate(Rotate::LEFT, &mut newmino, 0);
@@ -256,7 +260,8 @@ impl Search {
                     &before_eval,
                     lock_direction,
                     rotate_count + 1,
-                    passed_tree_route_set,
+                    grobal_data,
+                    task_index,
                 );
             }
         }
