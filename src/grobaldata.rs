@@ -1,4 +1,4 @@
-use crate::{environment::*, evaluation::*, search::*};
+use crate::{environment::*, evaluation::*, Search::Pattern};
 use std::{
     collections::{HashMap, HashSet},
     ops::{Index, IndexMut},

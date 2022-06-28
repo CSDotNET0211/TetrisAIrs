@@ -1,8 +1,8 @@
-use winconsole::console::clear;
+use std::ops::IndexMut;
 
 use crate::{
-    environment::{self, Environment, Mino},
-    grobaldata::GrobalData,
+    environment::{Environment, Mino},
+    grobaldata::{Data, GrobalData},
 };
 
 pub struct Evaluation {}
@@ -10,19 +10,25 @@ pub struct Evaluation {}
 impl Evaluation {
     pub const WEIGHT_COUNT: i32 = 9;
 
-    pub fn Evaluate(
+    pub fn evaluate(
         field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
         mino: &Mino,
         cleared_line: i32,
-        grobal_data: &mut GrobalData,
+        data: &mut Data,
+        weight: &[f64],
         index: &usize,
     ) -> f64 {
-        let mut clearedValue;
+        //  let data = data.data.index_mut(*index);
+
+        let row_height = &mut data.row_height;
+        let heights_without_ido = &mut data.heights_without_ido;
+
+        let cleared_value;
         match cleared_line {
-            1 => clearedValue = grobal_data.weight[1],
-            2 => clearedValue = grobal_data.weight[2],
-            3 => clearedValue = grobal_data.weight[3],
-            4 => clearedValue = grobal_data.weight[4],
+            1 => cleared_value = weight[1],
+            2 => cleared_value = weight[2],
+            3 => cleared_value = weight[3],
+            4 => cleared_value = weight[4],
             _ => panic!("1~4ライン消しじゃないよ"),
         }
 
@@ -38,7 +44,7 @@ impl Evaluation {
                         smallest = _y as i32;
                         smallest_index = _x as i32;
                     }
-                    grobal_data.data[*index].row_height[_x] = _y as i32;
+                    row_height[_x] = _y as i32;
                     flag = false;
 
                     _y -= 1;
@@ -49,20 +55,16 @@ impl Evaluation {
             if flag {
                 smallest_index = -1;
                 smallest = 50;
-                grobal_data.data[*index].row_height[_x] = -1;
+                row_height[_x] = -1;
             }
         }
         {
-            grobal_data.data[*index].heights_without_ido.clear();
-            grobal_data.data[*index]
-                .heights_without_ido
-                .extend(grobal_data.data[*index].row_height.iter().clone());
-            grobal_data.data[*index]
-                .heights_without_ido
-                .remove(smallest_index as usize);
+            heights_without_ido.clear();
+            heights_without_ido.extend(row_height.iter().clone());
+            heights_without_ido.remove(smallest_index as usize);
         }
 
-        let mut sum_of_height = grobal_data.data[*index].row_height.iter().sum::<i32>();
+        let sum_of_height = row_height.iter().sum::<i32>();
         let mut hole_count = 0;
 
         let mut y = Environment::FIELD_HEIGHT - 1;
@@ -77,18 +79,15 @@ impl Evaluation {
         }
 
         let mut bump = 0;
-        for i in 0..grobal_data.data[*index].row_height.len() - 1 - 1 {
-            bump += (grobal_data.data[*index].heights_without_ido[i]
-                - grobal_data.data[*index].heights_without_ido[i + 1])
-                .abs();
+        for i in 0..row_height.len() - 1 - 1 {
+            bump += (heights_without_ido[i] - heights_without_ido[i + 1]).abs();
         }
 
-        ((grobal_data.weight[0] * sum_of_height as f64)
-            + clearedValue
-            + (grobal_data.weight[5] * hole_count as f64)
-            + (grobal_data.weight[6] * bump as f64)
-            + (grobal_data.weight[7] * (hole_count * sum_of_height * sum_of_height) as f64)
-            + (grobal_data.weight[8]
-                * (bump as isize * sum_of_height as isize * sum_of_height as isize) as f64))
+        (weight[0] * sum_of_height as f64)
+            + cleared_value
+            + (weight[5] * hole_count as f64)
+            + (weight[6] * bump as f64)
+            + (weight[7] * (hole_count * sum_of_height * sum_of_height) as f64)
+            + (weight[8] * (bump as isize * sum_of_height as isize * sum_of_height as isize) as f64)
     }
 }

@@ -1,28 +1,25 @@
-use crate::environment;
 use crate::environment::*;
-use crate::evaluation;
 use crate::evaluation::*;
 use crate::grobaldata::*;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ops::IndexMut;
 
 pub struct Pattern {
-    pub Move: i64,
-    pub Position: i64,
-    pub Eval: f64,
-    pub MoveCount: i32,
-    pub FieldIndex: i32,
+    pub move_value: i64,
+    pub position: i64,
+    pub eval: f64,
+    pub move_count: i32,
+    pub field_index: i32,
 }
 
 impl Pattern {
     pub fn new() -> Self {
         Pattern {
-            Move: -1,
-            Position: -1,
-            Eval: -1.0,
-            MoveCount: -1,
-            FieldIndex: -1,
+            move_value: -1,
+            position: -1,
+            eval: -1.0,
+            move_count: -1,
+            field_index: -1,
         }
     }
 }
@@ -82,53 +79,49 @@ impl Search {
             let mut value: Pattern;
             //  let hash=
 
-            let hashmap = grobal_data.data.index_mut(*task_index);
-            if let Some(r) = hashmap.searched_data.get(&hash) {
-                Some(r)
-            } else {
-                None
-            }
-
-            //  let mut result;
+            let weight = grobal_data.weight;
+            let data = grobal_data.data.index_mut(*task_index);
+            let searched_data = &mut data.searched_data;
+            let result = searched_data.get_mut(&hash);
 
             if result.is_some() {
-                hashmap.searched_data.remove(&hash);
+                let mut result = result.unwrap();
 
-                let result = result.unwrap();
-
-                if result.MoveCount > move_count {
-                    result.MoveCount = move_count;
-                    result.Move = move_value + new_move_diff as i64;
+                if result.move_count > move_count {
+                    result.move_count = move_count;
+                    result.move_value = move_value + new_move_diff as i64;
                 }
-
-                grobal_data.data[*task_index]
-                    .searched_data
-                    .insert(hash, *result);
             } else {
                 let mut pattern = Pattern::new();
-                pattern.Position = newmino.position;
-                pattern.MoveCount = move_count;
-                pattern.Move = move_value + new_move_diff as i64;
+                pattern.position = newmino.position;
+                pattern.move_count = move_count;
+                pattern.move_value = move_value + new_move_diff as i64;
 
-                let mut fieldclone = field.clone();
+                let mut field_clone = field.clone();
 
                 for i in 0..4 {
-                    let x = Mino::get_position_from_value(pattern.Position, i, true);
-                    let y = Mino::get_position_from_value(pattern.Position, i, false);
+                    let x = Mino::get_position_from_value(pattern.position, i, true);
+                    let y = Mino::get_position_from_value(pattern.position, i, false);
 
-                    fieldclone[(x + y * 10) as usize] = true;
+                    field_clone[(x + y * 10) as usize] = true;
                 }
 
-                let clearedLine = Environment::check_and_clear_line(&mut fieldclone);
-                pattern.Eval = Evaluation::Evaluate(
-                    &fieldclone,
+                let cleared_line = Environment::check_and_clear_line(&mut field_clone);
+                pattern.eval = Evaluation::evaluate(
+                    &field_clone,
                     &newmino,
-                    clearedLine,
-                    grobal_data,
+                    cleared_line,
+                    data,
+                    &weight,
                     task_index,
-                )
+                );
+
+                data.vec_field.push(field_clone);
+                pattern.field_index = data.vec_field.len() as i32 - 1;
+                searched_data.insert(hash, pattern);
             }
         }
+
         //左移動
         if lock_direction != Action::MOVE_RIGHT
             && Environment::check_valid_pos(&field, &mino, &Vector2::MX1, 0)
@@ -146,7 +139,7 @@ impl Search {
             ) {
                 newmino.move_pos(Vector2::MX1.x, Vector2::MX1.y);
                 let mut temp = Action::MOVE_LEFT as i64;
-                for i in 0..move_count {
+                for _i in 0..move_count {
                     temp *= 10;
                 }
 
@@ -256,7 +249,7 @@ impl Search {
                 Environment::simple_rotate(Rotate::LEFT, &mut newmino, 0);
 
                 let mut temp = Action::ROTATE_LEFT as i64;
-                for i in 0..move_count {
+                for _i in 0..move_count {
                     temp *= 10;
                 }
 
