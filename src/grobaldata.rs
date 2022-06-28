@@ -1,4 +1,4 @@
-use crate::{environment::*, evaluation::*, Search::Pattern};
+use crate::{environment::*, evaluation::*, Search::SearchedPattern};
 use std::{
     collections::{HashMap, HashSet},
     ops::{Index, IndexMut},
@@ -30,7 +30,7 @@ pub struct Data {
     pub heights_without_ido: Vec<i32>,
     pub row_height: [i32; Environment::FIELD_WIDTH as usize],
     pub vec_field: Vec<[bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT]>,
-    pub searched_data: HashMap<i64, Pattern>,
+    pub searched_data: HashMap<i64, Self::SearchedPattern>,
     pub passed_tree_route_set: HashSet<i64>,
 }
 
@@ -55,7 +55,7 @@ impl Data {
             heights_without_ido: Vec::<i32>::new(),
             row_height: [0; Environment::FIELD_WIDTH],
             vec_field: Vec::<[bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT]>::new(),
-            searched_data: HashMap::<i64, Pattern>::new(),
+            searched_data: HashMap::<i64, SearchedPattern>::new(),
             passed_tree_route_set: HashSet::<i64>::new(),
         }
     }

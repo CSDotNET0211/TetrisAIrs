@@ -4,26 +4,6 @@ use crate::grobaldata::*;
 use std::collections::HashSet;
 use std::ops::IndexMut;
 
-pub struct Pattern {
-    pub move_value: i64,
-    pub position: i64,
-    pub eval: f64,
-    pub move_count: i32,
-    pub field_index: i32,
-}
-
-impl Pattern {
-    pub fn new() -> Self {
-        Pattern {
-            move_value: -1,
-            position: -1,
-            eval: -1.0,
-            move_count: -1,
-            field_index: -1,
-        }
-    }
-}
-
 struct Data {
     current: i32,
     next: i32,
@@ -37,6 +17,26 @@ struct Data {
 
 impl Data {
     pub const fn new() {}
+}
+
+pub struct SearchedPattern {
+    pub move_value: i64,
+    pub position: i64,
+    pub eval: f64,
+    pub move_count: i32,
+    pub field_index: i32,
+}
+
+impl SearchedPattern {
+    pub fn new() -> Self {
+        SearchedPattern {
+            move_value: -1,
+            position: -1,
+            eval: -1.0,
+            move_count: -1,
+            field_index: -1,
+        }
+    }
 }
 
 pub struct Search {}
@@ -76,9 +76,6 @@ impl Search {
             let hash =
                 Self::get_hash_for_position(newmino.mino_kind, newmino.rotation, &newmino.position);
 
-            let mut value: Pattern;
-            //  let hash=
-
             let weight = grobal_data.weight;
             let data = grobal_data.data.index_mut(*task_index);
             let searched_data = &mut data.searched_data;
@@ -92,22 +89,22 @@ impl Search {
                     result.move_value = move_value + new_move_diff as i64;
                 }
             } else {
-                let mut pattern = Pattern::new();
-                pattern.position = newmino.position;
-                pattern.move_count = move_count;
-                pattern.move_value = move_value + new_move_diff as i64;
+                let mut pattern1 = SearchedPattern::new();
+                pattern1.position = newmino.position;
+                pattern1.move_count = move_count;
+                pattern1.move_value = move_value + new_move_diff as i64;
 
                 let mut field_clone = field.clone();
 
                 for i in 0..4 {
-                    let x = Mino::get_position_from_value(pattern.position, i, true);
-                    let y = Mino::get_position_from_value(pattern.position, i, false);
+                    let x = Mino::get_position_from_value(pattern1.position, i, true);
+                    let y = Mino::get_position_from_value(pattern1.position, i, false);
 
                     field_clone[(x + y * 10) as usize] = true;
                 }
 
                 let cleared_line = Environment::check_and_clear_line(&mut field_clone);
-                pattern.eval = Evaluation::evaluate(
+                pattern1.eval = Evaluation::evaluate(
                     &field_clone,
                     &newmino,
                     cleared_line,
@@ -117,8 +114,9 @@ impl Search {
                 );
 
                 data.vec_field.push(field_clone);
-                pattern.field_index = data.vec_field.len() as i32 - 1;
-                searched_data.insert(hash, pattern);
+                pattern1.field_index = data.vec_field.len() as i32 - 1;
+                // searched_data.insert(k, v)
+                searched_data.insert(hash, pattern1);
             }
         }
 
