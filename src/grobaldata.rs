@@ -1,4 +1,4 @@
-use crate::{environment::*, evaluation::*, Search::SearchedPattern};
+use crate::{beemsearch::SearchedPattern, environment::*, evaluation::*};
 use std::{
     collections::{HashMap, HashSet},
     ops::{Index, IndexMut},
@@ -30,7 +30,7 @@ pub struct Data {
     pub heights_without_ido: Vec<i32>,
     pub row_height: [i32; Environment::FIELD_WIDTH as usize],
     pub vec_field: Vec<[bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT]>,
-    pub searched_data: HashMap<i64, Self::SearchedPattern>,
+    pub searched_data: HashMap<i64, SearchedPattern>,
     pub passed_tree_route_set: HashSet<i64>,
 }
 

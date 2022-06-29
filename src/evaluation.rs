@@ -11,15 +11,13 @@ impl Evaluation {
     pub const WEIGHT_COUNT: i32 = 9;
 
     pub fn evaluate(
-        field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
+        field: &[bool],
         mino: &Mino,
         cleared_line: i32,
         data: &mut Data,
         weight: &[f64],
         index: &usize,
     ) -> f64 {
-        //  let data = data.data.index_mut(*index);
-
         let row_height = &mut data.row_height;
         let heights_without_ido = &mut data.heights_without_ido;
 

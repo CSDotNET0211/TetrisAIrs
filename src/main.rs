@@ -1,9 +1,8 @@
-mod Search;
+mod beemsearch;
 mod draw;
 mod environment;
 mod evaluation;
 mod grobaldata;
-mod search;
 
 use draw::print;
 use environment::{Action, Environment};

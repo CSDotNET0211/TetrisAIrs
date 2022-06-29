@@ -1,4 +1,4 @@
-use crate::environment::{self, Environment, Mino};
+use crate::environment::{self, Environment, Mino, Vector2};
 use crossterm::{
     cursor::{self, DisableBlinking, Hide},
     execute, queue,
@@ -15,16 +15,7 @@ pub fn print(field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH
 
     let mut stdout = stdout();
 
-    execute!(
-        stdout,
-        Hide,
-        DisableBlinking,
-        terminal::Clear(ClearType::All),
-        cursor::MoveTo(0, 0)
-    )
-    .unwrap();
-
-    return;
+    execute!(stdout, Hide, DisableBlinking, cursor::MoveTo(0, 0)).unwrap();
     queue!(stdout, cursor::MoveTo(0, 0)).unwrap();
 
     let mut y = Environment::FIELD_HEIGHT as i32 - 1;
@@ -41,13 +32,32 @@ pub fn print(field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH
         y -= 1;
     }
 
+    let mut quickdrop_value = 0;
+
+    loop {
+        if !Environment::check_valid_pos(
+            &field,
+            &mino,
+            &Vector2 {
+                x: 0,
+                y: quickdrop_value,
+            },
+            0,
+        ) {
+            quickdrop_value += 1;
+            break;
+        }
+
+        quickdrop_value -= 1;
+    }
+
     for _i in 0..4 as i32 {
         let x = mino.get_position(_i, true);
-        let y = mino.get_position(_i, false);
+        let y = mino.get_position(_i, false) + quickdrop_value;
         queue!(
             stdout,
             cursor::MoveTo(
-                x as u16,
+                x as u16 * 2,
                 (Environment::FIELD_HEIGHT - 1 - y as usize) as u16,
             )
         )
@@ -55,13 +65,35 @@ pub fn print(field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH
 
         queue!(
             stdout,
-            SetForegroundColor(Color::Blue),
+            SetForegroundColor(Color::DarkGrey),
             Print("■"),
             ResetColor
         )
         .unwrap();
     }
 
-    queue!(stdout, cursor::MoveTo(0, 0));
+    for _i in 0..4 as i32 {
+        let x = mino.get_position(_i, true);
+        let y = mino.get_position(_i, false);
+        queue!(
+            stdout,
+            cursor::MoveTo(
+                x as u16 * 2,
+                (Environment::FIELD_HEIGHT - 1 - y as usize) as u16,
+            )
+        )
+        .unwrap();
+
+        queue!(
+            stdout,
+            SetForegroundColor(Color::DarkBlue),
+            Print("■"),
+            ResetColor
+        )
+        .unwrap();
+    }
+
     stdout.flush().unwrap();
 }
+
+fn get_mino_form(minokind: i8) {}
