@@ -75,6 +75,7 @@ impl Action {
     pub const HARD_DROP: i8 = 4;
     pub const SOFT_DROP: i8 = 5;
     pub const HOLD: i8 = 6;
+    pub const NULL: i8 = 7;
 }
 
 pub struct Rotate {}
