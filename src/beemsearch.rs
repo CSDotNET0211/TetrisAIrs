@@ -3,8 +3,9 @@ use crate::evaluation::*;
 use crate::grobaldata::*;
 use std::collections::HashSet;
 use std::ops::IndexMut;
+use std::str::pattern::Pattern;
 
-struct Data {
+struct ProcessData {
     current: i8,
     next: i8,
     next_count: i8,
@@ -15,7 +16,7 @@ struct Data {
     before_eval: f64,
 }
 
-impl Data {
+impl ProcessData {
     pub const fn new() {}
 }
 
@@ -56,7 +57,7 @@ impl BeemSearch {
             next_int = nexts[i as usize] * (10 * next_count - i - 1);
         }
         eprintln!("next_int={}", next_int);
-        let mut data = Data {
+        let mut data = ProcessData {
             current: current,
             next: next_int,
             next_count: next_count,
@@ -68,6 +69,45 @@ impl BeemSearch {
         };
 
         1
+    }
+
+    fn proceed_task(data: ProcessData, grobal_data: &mut GrobalData, index: usize) {
+        init(grobal_data, index);
+
+        let mut mino = Environment::create_mino_1(data.current);
+        Self::search(
+            &mut mino,
+            &data.field,
+            0,
+            0,
+            &data.before_eval,
+            Action::NULL,
+            0,
+            grobal_data,
+            &index,
+        );
+        let searched_data = grobal_data.data[index].searched_data.values().into_iter().;
+        if data.next_count == 0 {
+            //    let mut best: Pattern;
+
+            let mut beem_width;
+            if searched_data.len() < 10 {
+                beem_width = searched_data.len();
+                searched_data.sor
+            } else {
+            }
+        } else {
+        }
+
+        //   grobal_data.data[index].
+
+        fn init(grobal_data: &mut GrobalData, index: usize) {
+            let mut data = grobal_data.data.index_mut(index as usize);
+            //   data.heights_without_ido.clear();
+            data.passed_tree_route_set.clear();
+            data.vec_field.clear();
+            data.searched_data.clear();
+        }
     }
 
     fn search(
@@ -106,44 +146,43 @@ impl BeemSearch {
 
             let weight = grobal_data.weight;
             let data = grobal_data.data.index_mut(*task_index);
-            //    let searched_data = &mut data.searched_data;
-            let result = data.searched_data.get_mut(&hash);
 
-            if result.is_some() {
-                let mut result = result.unwrap();
-
-                if result.move_count > move_count {
-                    result.move_count = move_count;
-                    result.move_value = move_value + new_move_diff as i64;
+            match data.searched_data.get_mut(&hash) {
+                Some(result) => {
+                    if result.move_count > move_count {
+                        result.move_count = move_count;
+                        result.move_value = move_value + new_move_diff as i64;
+                    }
                 }
-            } else {
-                let mut pattern = SearchedPattern::new();
-                pattern.position = newmino.position;
-                pattern.move_count = move_count;
-                pattern.move_value = move_value + new_move_diff as i64;
+                None => {
+                    let mut pattern = SearchedPattern::new();
+                    pattern.position = newmino.position;
+                    pattern.move_count = move_count;
+                    pattern.move_value = move_value + new_move_diff as i64;
 
-                let mut field_clone = field.clone();
+                    let mut field_clone = field.clone();
 
-                for i in 0..4 {
-                    let x = Mino::get_position_from_value(pattern.position, i, true);
-                    let y = Mino::get_position_from_value(pattern.position, i, false);
+                    for i in 0..4 {
+                        let x = Mino::get_position_from_value(pattern.position, i, true);
+                        let y = Mino::get_position_from_value(pattern.position, i, false);
 
-                    field_clone[(x + y * 10) as usize] = true;
+                        field_clone[(x + y * 10) as usize] = true;
+                    }
+
+                    let cleared_line = Environment::check_and_clear_line(&mut field_clone);
+                    pattern.eval = Evaluation::evaluate(
+                        &field_clone,
+                        &newmino,
+                        cleared_line,
+                        data,
+                        &weight,
+                        task_index,
+                    );
+
+                    data.vec_field.push(field_clone);
+                    pattern.field_index = data.vec_field.len() as i32 - 1;
+                    data.searched_data.insert(hash, pattern);
                 }
-
-                let cleared_line = Environment::check_and_clear_line(&mut field_clone);
-                pattern.eval = Evaluation::evaluate(
-                    &field_clone,
-                    &newmino,
-                    cleared_line,
-                    data,
-                    &weight,
-                    task_index,
-                );
-
-                data.vec_field.push(field_clone);
-                pattern.field_index = data.vec_field.len() as i32 - 1;
-                data.searched_data.insert(hash, pattern);
             }
         }
 
