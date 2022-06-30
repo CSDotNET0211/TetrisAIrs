@@ -3,7 +3,6 @@ use crate::evaluation::*;
 use crate::grobaldata::*;
 use std::collections::HashSet;
 use std::ops::IndexMut;
-use std::str::pattern::Pattern;
 
 struct ProcessData {
     current: i8,
@@ -86,15 +85,29 @@ impl BeemSearch {
             grobal_data,
             &index,
         );
-        let searched_data = grobal_data.data[index].searched_data.values().into_iter().;
+        let mut searched_data_vec = Vec::new();
+        searched_data_vec.extend(grobal_data.data[index].searched_data.values().into_iter());
+        //  grobal_data.data[index].searched_data.values().collect();
+
         if data.next_count == 0 {
             //    let mut best: Pattern;
 
-            let mut beem_width;
-            if searched_data.len() < 10 {
-                beem_width = searched_data.len();
-                searched_data.sor
+            let beem_width;
+            if searched_data_vec.len() < 10 {
+                beem_width = searched_data_vec.len();
             } else {
+                searched_data_vec.sort_by(|a, b| b.eval.partial_cmp(&a.eval).unwrap());
+                beem_width = 10;
+            }
+
+            for beem in 0..beem_width {
+                let first: i64;
+
+                if (data.first_move == -1) {
+                    first = searched_data_vec[beem].move_value;
+                } else {
+                    first = data.first_move;
+                }
             }
         } else {
         }
