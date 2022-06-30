@@ -1,9 +1,14 @@
+use crossterm::queue;
+
 use crate::environment::*;
 use crate::evaluation::*;
 use crate::grobaldata::*;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ops::IndexMut;
-
+use std::sync::atomic::AtomicUsize;
+use std::sync::Arc;
+use std::sync::Mutex;
 struct ProcessData {
     current: i8,
     next: i8,
@@ -19,6 +24,7 @@ impl ProcessData {
     pub const fn new() {}
 }
 
+#[derive(Clone, Copy)]
 pub struct SearchedPattern {
     pub move_value: i64,
     pub position: i64,
@@ -70,7 +76,18 @@ impl BeemSearch {
         1
     }
 
-    fn proceed_task(data: ProcessData, grobal_data: &mut GrobalData, index: usize) {
+    fn proceed_task(
+        data: ProcessData,
+        grobal_data: &mut GrobalData,
+        index: usize,
+        counter: Arc<AtomicUsize>,
+        queue: Arc<Mutex<Vec<ProcessData>>>,
+        best: Arc<Mutex<SearchedPattern>>,
+    ) {
+        let counter_clone = Arc::clone(&counter);
+        let queue_clone = Arc::clone(&queue);
+        let best_clone = Arc::clone(&best);
+
         init(grobal_data, index);
 
         let mut mino = Environment::create_mino_1(data.current);
@@ -85,42 +102,93 @@ impl BeemSearch {
             grobal_data,
             &index,
         );
-        let mut searched_data_vec = Vec::new();
+        let mut searched_data_vec = Vec::<SearchedPattern>::new();
         searched_data_vec.extend(grobal_data.data[index].searched_data.values().into_iter());
         //  grobal_data.data[index].searched_data.values().collect();
 
-        if data.next_count == 0 {
-            //    let mut best: Pattern;
+        let beem_width;
 
-            let beem_width;
-            if searched_data_vec.len() < 10 {
-                beem_width = searched_data_vec.len();
-            } else {
-                searched_data_vec.sort_by(|a, b| b.eval.partial_cmp(&a.eval).unwrap());
-                beem_width = 10;
-            }
+        if searched_data_vec.len() <= 10 {
+            beem_width = searched_data_vec.len();
+        } else {
+            searched_data_vec.sort_by(|a, b| b.eval.partial_cmp(&a.eval).unwrap());
+            beem_width = 10;
+        }
+
+        if data.next_count == 0 {
+            let mut best_in_this_pattern = SearchedPattern {
+                position: -1,
+                move_value: 0,
+                eval: 0.0,
+                field_index: 0,
+                move_count: 0,
+            };
 
             for beem in 0..beem_width {
                 let first: i64;
 
-                if (data.first_move == -1) {
+                if data.first_move == -1 {
                     first = searched_data_vec[beem].move_value;
                 } else {
                     first = data.first_move;
                 }
-            }
-        } else {
-        }
 
-        //   grobal_data.data[index].
+                update_ifbetter(&mut best_in_this_pattern, &searched_data_vec[beem], first);
+            }
+
+            {
+                update_ifbetter(
+                    best_clone.lock().unwrap(),
+                    &best_in_this_pattern,
+                    best_in_this_pattern.move_value,
+                );
+            }
+        //更新
+        } else {
+            for beem in 0..beem_width {
+                searched_data_vec[beem].eval += data.before_eval;
+
+                let first: i64;
+
+                if data.first_move == -1 {
+                    first = searched_data_vec[beem].move_value;
+                } else {
+                    first = data.first_move;
+                }
+
+                let mut newcurrent = data.next;
+                let mut newnext = data.next;
+                let mut tempDiv = 10;
+
+                for _i in 0..data.next_count - 1 {
+                    newcurrent /= 10;
+                    tempDiv *= 10;
+                }
+
+                newnext %= tempDiv;
+            }
+        }
 
         fn init(grobal_data: &mut GrobalData, index: usize) {
             let mut data = grobal_data.data.index_mut(index as usize);
-            //   data.heights_without_ido.clear();
             data.passed_tree_route_set.clear();
             data.vec_field.clear();
             data.searched_data.clear();
         }
+
+        fn update_ifbetter(best: &mut SearchedPattern, test: &SearchedPattern, move_value: i64) {
+            if best.position == -1 || test.eval > best.eval {
+                *best = *test;
+                best.move_value = move_value;
+            }
+        }
+    }
+
+    fn get_loop() {
+        let counter = Arc::new(AtomicUsize::new(0));
+        let queue = Arc::new(Mutex::new(Vec::<ProcessData>::new()));
+        //      counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let mut hashmap = HashMap::<i32, i64>::new();
     }
 
     fn search(
