@@ -3,6 +3,7 @@ mod draw;
 mod environment;
 mod evaluation;
 mod grobaldata;
+mod threadpool;
 
 use draw::print;
 use environment::{Action, Environment};

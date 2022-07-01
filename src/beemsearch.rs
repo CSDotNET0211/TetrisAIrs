@@ -5,10 +5,13 @@ use crate::evaluation::*;
 use crate::grobaldata::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::ops::Index;
 use std::ops::IndexMut;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::thread;
+
 struct ProcessData {
     current: i8,
     next: i8,
@@ -45,7 +48,7 @@ impl SearchedPattern {
     }
 }
 
-pub struct BeemSearch {}
+pub struct BeemSearch;
 
 impl BeemSearch {
     fn get_best_move(
@@ -137,11 +140,10 @@ impl BeemSearch {
             }
 
             {
-                update_ifbetter(
-                    best_clone.lock().unwrap(),
-                    &best_in_this_pattern,
-                    best_in_this_pattern.move_value,
-                );
+                let mut value = best_clone.lock().unwrap();
+                if value.eval < best_in_this_pattern.eval {
+                    *value = best_in_this_pattern;
+                }
             }
         //更新
         } else {
@@ -156,16 +158,36 @@ impl BeemSearch {
                     first = data.first_move;
                 }
 
-                let mut newcurrent = data.next;
-                let mut newnext = data.next;
-                let mut tempDiv = 10;
+                let mut new_current = data.next;
+                let mut new_next = data.next;
+                let mut temp_div = 10;
 
                 for _i in 0..data.next_count - 1 {
-                    newcurrent /= 10;
-                    tempDiv *= 10;
+                    new_current /= 10;
+                    temp_div *= 10;
                 }
 
-                newnext %= tempDiv;
+                new_next %= temp_div;
+
+                counter_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                let process_data = ProcessData {
+                    current: new_current,
+                    next: new_next,
+                    next_count: data.next_count - 1,
+                    hold: data.hold,
+                    can_hold: data.can_hold,
+                    field: grobal_data.data.index(index).vec_field[beem],
+                    before_eval: searched_data_vec[beem].eval,
+                    first_move: first,
+                };
+
+                {
+                    queue_clone.lock().unwrap().push(process_data);
+                }
+            }
+
+            {
+                counter_clone.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
             }
         }
 
@@ -189,6 +211,11 @@ impl BeemSearch {
         let queue = Arc::new(Mutex::new(Vec::<ProcessData>::new()));
         //      counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let mut hashmap = HashMap::<i32, i64>::new();
+        //   let thread_pool = threadpool;
+
+        loop {
+            let data = queue.lock().unwrap().pop().unwrap();
+        }
     }
 
     fn search(
