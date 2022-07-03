@@ -15,7 +15,8 @@ console = "0.15.0"
 rawkey = "*"
 crossterm = "*"
 num_cpus="*"
-
+thread-id = "*"
+once_cell = "*"
 
 [dependencies.winconsole]
 version = "0.11.1"

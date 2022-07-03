@@ -1,16 +1,14 @@
-use crossterm::queue;
-
 use crate::environment::*;
 use crate::evaluation::*;
 use crate::grobaldata::*;
+use crate::threadpool::ThreadPool;
+use std::cell::RefCell;
+use std::collections::hash_set;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::ops::Index;
-use std::ops::IndexMut;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::thread;
 
 struct ProcessData {
     current: i8,
@@ -24,7 +22,31 @@ struct ProcessData {
 }
 
 impl ProcessData {
-    pub const fn new() {}
+    pub const fn new() -> Self {
+        ProcessData {
+            current: -1,
+            next: -1,
+            next_count: -1,
+            hold: -1,
+            can_hold: false,
+            field: [false; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
+            first_move: -1,
+            before_eval: -1.0,
+        }
+    }
+
+    pub fn clone(&self) -> Self {
+        ProcessData {
+            current: self.current,
+            next: self.next,
+            next_count: self.next_count,
+            hold: self.hold,
+            can_hold: self.can_hold,
+            field: self.field,
+            first_move: self.first_move,
+            before_eval: self.before_eval,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -41,7 +63,7 @@ impl SearchedPattern {
         SearchedPattern {
             move_value: -1,
             position: -1,
-            eval: -1.0,
+            eval: f64::MIN,
             move_count: -1,
             field_index: -1,
         }
@@ -49,6 +71,12 @@ impl SearchedPattern {
 }
 
 pub struct BeemSearch;
+
+thread_local! {
+ pub   static vec_field:RefCell<Vec<[bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT]>>={let mut m=Vec::new(); RefCell::new(m)};
+ pub static searched_data:RefCell<HashMap<i64, SearchedPattern>>={let mut m=HashMap::new(); RefCell::new(m)};
+pub static passed_tree_route_set:RefCell<HashSet<i64>>={let mut m=HashSet::new();RefCell::new(m)};
+}
 
 impl BeemSearch {
     fn get_best_move(
@@ -80,34 +108,28 @@ impl BeemSearch {
     }
 
     fn proceed_task(
-        data: ProcessData,
-        grobal_data: &mut GrobalData,
-        index: usize,
+        processdata: &ProcessData,
         counter: Arc<AtomicUsize>,
         queue: Arc<Mutex<Vec<ProcessData>>>,
         best: Arc<Mutex<SearchedPattern>>,
     ) {
-        let counter_clone = Arc::clone(&counter);
-        let queue_clone = Arc::clone(&queue);
-        let best_clone = Arc::clone(&best);
+        //     searched_data::with(|value| {});
+        init();
 
-        init(grobal_data, index);
+        let mut mino = Environment::create_mino_1(processdata.current);
 
-        let mut mino = Environment::create_mino_1(data.current);
         Self::search(
             &mut mino,
-            &data.field,
+            &processdata.field,
             0,
             0,
-            &data.before_eval,
+            &processdata.before_eval,
             Action::NULL,
             0,
-            grobal_data,
-            &index,
         );
         let mut searched_data_vec = Vec::<SearchedPattern>::new();
-        searched_data_vec.extend(grobal_data.data[index].searched_data.values().into_iter());
-        //  grobal_data.data[index].searched_data.values().collect();
+
+        searched_data.with(|value| searched_data_vec.extend(value.borrow().values().into_iter()));
 
         let beem_width;
 
@@ -118,7 +140,7 @@ impl BeemSearch {
             beem_width = 10;
         }
 
-        if data.next_count == 0 {
+        if processdata.next_count == 0 {
             let mut best_in_this_pattern = SearchedPattern {
                 position: -1,
                 move_value: 0,
@@ -130,17 +152,17 @@ impl BeemSearch {
             for beem in 0..beem_width {
                 let first: i64;
 
-                if data.first_move == -1 {
+                if processdata.first_move == -1 {
                     first = searched_data_vec[beem].move_value;
                 } else {
-                    first = data.first_move;
+                    first = processdata.first_move;
                 }
 
                 update_ifbetter(&mut best_in_this_pattern, &searched_data_vec[beem], first);
             }
 
             {
-                let mut value = best_clone.lock().unwrap();
+                let mut value = best.lock().unwrap();
                 if value.eval < best_in_this_pattern.eval {
                     *value = best_in_this_pattern;
                 }
@@ -148,54 +170,57 @@ impl BeemSearch {
         //更新
         } else {
             for beem in 0..beem_width {
-                searched_data_vec[beem].eval += data.before_eval;
+                searched_data_vec[beem].eval += processdata.before_eval;
 
                 let first: i64;
 
-                if data.first_move == -1 {
+                if processdata.first_move == -1 {
                     first = searched_data_vec[beem].move_value;
                 } else {
-                    first = data.first_move;
+                    first = processdata.first_move;
                 }
 
-                let mut new_current = data.next;
-                let mut new_next = data.next;
+                let mut new_current = processdata.next;
+                let mut new_next = processdata.next;
                 let mut temp_div = 10;
 
-                for _i in 0..data.next_count - 1 {
+                for _i in 0..processdata.next_count - 1 {
                     new_current /= 10;
                     temp_div *= 10;
                 }
 
                 new_next %= temp_div;
 
-                counter_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                let process_data = ProcessData {
-                    current: new_current,
-                    next: new_next,
-                    next_count: data.next_count - 1,
-                    hold: data.hold,
-                    can_hold: data.can_hold,
-                    field: grobal_data.data.index(index).vec_field[beem],
-                    before_eval: searched_data_vec[beem].eval,
-                    first_move: first,
-                };
+                counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
+                let mut process_data = ProcessData::new();
+                vec_field.with(|value| {
+                    process_data = ProcessData {
+                        current: new_current,
+                        next: new_next,
+                        next_count: processdata.next_count - 1,
+                        hold: processdata.hold,
+                        can_hold: processdata.can_hold,
+                        field: value.borrow()[beem],
+                        before_eval: searched_data_vec[beem].eval,
+                        first_move: first,
+                    }
+                });
 
                 {
-                    queue_clone.lock().unwrap().push(process_data);
+                    queue.lock().unwrap().push(process_data);
                 }
             }
 
             {
-                counter_clone.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+                counter.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
             }
         }
 
-        fn init(grobal_data: &mut GrobalData, index: usize) {
-            let mut data = grobal_data.data.index_mut(index as usize);
-            data.passed_tree_route_set.clear();
-            data.vec_field.clear();
-            data.searched_data.clear();
+        fn init() {
+            passed_tree_route_set.with(|value| value.borrow_mut().clear());
+            vec_field.with(|value| value.borrow_mut().clear());
+            searched_data.with(|value| value.borrow_mut().clear());
         }
 
         fn update_ifbetter(best: &mut SearchedPattern, test: &SearchedPattern, move_value: i64) {
@@ -206,15 +231,27 @@ impl BeemSearch {
         }
     }
 
-    fn get_loop() {
+    fn get_loop(grobal_data: &'static mut GrobalData) {
         let counter = Arc::new(AtomicUsize::new(0));
         let queue = Arc::new(Mutex::new(Vec::<ProcessData>::new()));
-        //      counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        let mut hashmap = HashMap::<i32, i64>::new();
-        //   let thread_pool = threadpool;
+        let hashmap = HashMap::<i32, i64>::new();
+        let thread_pool = ThreadPool::new(num_cpus::get());
+        let best = Arc::new(Mutex::new(SearchedPattern::new()));
 
         loop {
-            let data = queue.lock().unwrap().pop().unwrap();
+            let data = queue.lock().unwrap().pop();
+            let counter = Arc::clone(&counter);
+            let best = Arc::clone(&best);
+            let queue = Arc::clone(&queue);
+
+            match data {
+                Some(result) => {
+                    thread_pool.execute(move || {
+                        Self::proceed_task(&result, counter, queue, Arc::clone(&best));
+                    });
+                }
+                None => {}
+            }
         }
     }
 
@@ -226,8 +263,6 @@ impl BeemSearch {
         before_eval: &f64,
         lock_direction: i8,
         rotate_count: i32,
-        grobal_data: &mut GrobalData,
-        task_index: &usize,
     ) {
         //ハードドロップ
         {
@@ -252,17 +287,14 @@ impl BeemSearch {
             let hash =
                 Self::get_hash_for_position(newmino.mino_kind, newmino.rotation, &newmino.position);
 
-            let weight = grobal_data.weight;
-            let data = grobal_data.data.index_mut(*task_index);
-
-            match data.searched_data.get_mut(&hash) {
-                Some(result) => {
+            searched_data.with(|value| {
+                let mut mutvalue = value.borrow_mut();
+                if let Some(result) = mutvalue.get_mut(&hash) {
                     if result.move_count > move_count {
                         result.move_count = move_count;
                         result.move_value = move_value + new_move_diff as i64;
                     }
-                }
-                None => {
+                } else {
                     let mut pattern = SearchedPattern::new();
                     pattern.position = newmino.position;
                     pattern.move_count = move_count;
@@ -278,20 +310,16 @@ impl BeemSearch {
                     }
 
                     let cleared_line = Environment::check_and_clear_line(&mut field_clone);
-                    pattern.eval = Evaluation::evaluate(
-                        &field_clone,
-                        &newmino,
-                        cleared_line,
-                        data,
-                        &weight,
-                        task_index,
-                    );
+                    pattern.eval = Evaluation::evaluate(&field_clone, &newmino, cleared_line);
 
-                    data.vec_field.push(field_clone);
-                    pattern.field_index = data.vec_field.len() as i32 - 1;
-                    data.searched_data.insert(hash, pattern);
+                    vec_field.with(|value| {
+                        value.borrow_mut().push(field_clone);
+                        pattern.field_index = mutvalue.len() as i32 - 1;
+                    });
+
+                    mutvalue.insert(hash, pattern);
                 }
-            }
+            });
         }
 
         //左移動
@@ -307,7 +335,6 @@ impl BeemSearch {
                 Vector2::MX1.y,
                 mino.rotation,
                 true,
-                &mut grobal_data.data[*task_index].passed_tree_route_set,
             ) {
                 newmino.move_pos(Vector2::MX1.x, Vector2::MX1.y);
                 let mut temp = Action::MOVE_LEFT as i64;
@@ -323,8 +350,6 @@ impl BeemSearch {
                     &before_eval,
                     Action::MOVE_LEFT,
                     rotate_count,
-                    grobal_data,
-                    task_index,
                 );
             }
         }
@@ -341,7 +366,6 @@ impl BeemSearch {
                 Vector2::X1.y,
                 mino.rotation,
                 true,
-                &mut grobal_data.data[*task_index].passed_tree_route_set,
             ) {
                 newmino.move_pos(Vector2::X1.x, Vector2::X1.y);
 
@@ -358,8 +382,6 @@ impl BeemSearch {
                     &before_eval,
                     Action::MOVE_LEFT,
                     rotate_count,
-                    grobal_data,
-                    task_index,
                 );
             }
         }
@@ -378,7 +400,6 @@ impl BeemSearch {
                 result.y,
                 newrotation,
                 true,
-                &mut grobal_data.data[*task_index].passed_tree_route_set,
             ) {
                 newmino.move_pos(result.x, result.y);
                 Environment::simple_rotate(Rotate::RIGHT, &mut newmino, 0);
@@ -396,8 +417,6 @@ impl BeemSearch {
                     &before_eval,
                     lock_direction,
                     rotate_count + 1,
-                    grobal_data,
-                    task_index,
                 );
             }
         }
@@ -415,7 +434,6 @@ impl BeemSearch {
                 result.y,
                 newrotation,
                 true,
-                &mut grobal_data.data[*task_index].passed_tree_route_set,
             ) {
                 newmino.move_pos(result.x, result.y);
                 Environment::simple_rotate(Rotate::LEFT, &mut newmino, 0);
@@ -433,8 +451,6 @@ impl BeemSearch {
                     &before_eval,
                     lock_direction,
                     rotate_count + 1,
-                    grobal_data,
-                    task_index,
                 );
             }
         }
@@ -447,20 +463,22 @@ impl BeemSearch {
         y_diff: i32,
         newrotation: i8,
         apply_history: bool,
-        passed_tree_route_set: &mut HashSet<i64>,
     ) -> bool {
         Mino::add_position_xy(&mut pos, x_diff, y_diff);
 
         let hash = Self::get_hash_for_position(kind, newrotation, &pos);
-        let result = passed_tree_route_set.contains(&hash);
+        let mut result = false;
+        passed_tree_route_set.with(|value| {
+            result = value.borrow().contains(&hash);
+
+            if !result && apply_history {
+                value.borrow_mut().insert(hash);
+            }
+        });
+
         if result {
             return true;
         }
-
-        if apply_history {
-            passed_tree_route_set.insert(hash);
-        }
-
         return false;
     }
 

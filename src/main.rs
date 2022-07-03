@@ -7,12 +7,32 @@ mod threadpool;
 
 use draw::print;
 use environment::{Action, Environment};
+use evaluation::Evaluation;
 use grobaldata::GrobalData;
 use num_cpus;
-use std::time;
+use once_cell::sync::OnceCell;
+use std::{thread, time};
+use thread_id;
+use threadpool::ThreadPool;
 use winconsole::console::{self, getch};
 
+fn test(index: usize) {
+    thread::sleep_ms(1500);
+    println!("{}番目のやつ終わり\r\nidは", index);
+}
+
+pub static WEIGHT: OnceCell<[f64; Evaluation::WEIGHT_COUNT as usize]> = OnceCell::new();
+
 fn main() {
+    let pool = ThreadPool::new(2);
+    for i in 0..10 {
+        pool.execute(move || {
+            test(i);
+        });
+    }
+
+    getch(true).unwrap();
+
     let mut environment = Environment::new();
     environment.init();
     let sleeptime = time::Duration::from_millis(30);
