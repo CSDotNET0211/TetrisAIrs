@@ -82,6 +82,8 @@ thread_local! {
     pub static SEARCHED_DATA:RefCell<HashMap<i64, SearchedPattern>>={let  m=HashMap::new(); RefCell::new(m)};
     //過去に通過した位置を記録
     pub static PASSED_TREE_ROUTE_SET:RefCell<HashSet<i64>>={let  m=HashSet::new();RefCell::new(m)};
+    //検索したデータを移行・ソート用
+    pub static SEARCHED_DATA_VEC:RefCell<Vec<SearchedPattern>>={let m= Vec::<SearchedPattern>::new();RefCell::new(m)};
 }
 
 impl BeemSearch {
@@ -97,11 +99,11 @@ impl BeemSearch {
         let queue = Arc::new(Mutex::new(Vec::<ProcessData>::new()));
         let counter = Arc::new(AtomicUsize::new(0));
 
-        //[1,2,3,4] -> 1234
+        //vec![1,2,3,4] -> 1234
         let mut next_int = 0;
-        for i in 0..4 {
+        for i in 0..next_count {
             next_int += {
-                let mut temp = nexts[i];
+                let mut temp = nexts[i as usize];
                 for _i in 0..(4 - i - 1) {
                     temp *= 10;
                 }
@@ -117,7 +119,7 @@ impl BeemSearch {
             can_hold: can_hold,
             field: *field,
             before_eval: 0.0,
-            first_move: 0,
+            first_move: -1,
         };
 
         queue.lock().unwrap().push(data);
@@ -147,18 +149,24 @@ impl BeemSearch {
             Action::NULL,
             0,
         );
-        let mut searched_data_vec = Vec::<SearchedPattern>::new();
 
-        SEARCHED_DATA.with(|value| searched_data_vec.extend(value.borrow().values().into_iter()));
+        SEARCHED_DATA.with(|value| {
+            SEARCHED_DATA_VEC.with(|vec| {
+                vec.borrow_mut().extend(value.borrow().values().into_iter());
+            })
+        });
 
-        let beem_width;
+        let mut beem_width = 0;
 
-        if searched_data_vec.len() <= 10 {
-            beem_width = searched_data_vec.len();
-        } else {
-            searched_data_vec.sort_by(|a, b| b.eval.partial_cmp(&a.eval).unwrap());
-            beem_width = 10;
-        }
+        SEARCHED_DATA_VEC.with(|vec| {
+            if vec.borrow().len() <= 10 {
+                beem_width = vec.borrow().len();
+            } else {
+                vec.borrow_mut()
+                    .sort_by(|a, b| b.eval.partial_cmp(&a.eval).unwrap());
+                beem_width = 10;
+            }
+        });
 
         if processdata.next_count == 0 {
             let mut best_in_this_pattern = SearchedPattern {
@@ -170,15 +178,17 @@ impl BeemSearch {
             };
 
             for beem in 0..beem_width {
-                let first: i64;
+                let mut first = -1;
 
-                if processdata.first_move == -1 {
-                    first = searched_data_vec[beem].move_value;
-                } else {
-                    first = processdata.first_move;
-                }
+                SEARCHED_DATA_VEC.with(|vec| {
+                    if processdata.first_move == -1 {
+                        first = vec.borrow()[beem].move_value;
+                    } else {
+                        first = processdata.first_move;
+                    }
 
-                update_ifbetter(&mut best_in_this_pattern, &searched_data_vec[beem], first);
+                    update_if_better(&mut best_in_this_pattern, &vec.borrow_mut()[beem], first);
+                });
             }
 
             {
@@ -190,12 +200,18 @@ impl BeemSearch {
         //更新
         } else {
             for beem in 0..beem_width {
-                searched_data_vec[beem].eval += processdata.before_eval;
+                let mut eval = 0.0;
+                let mut firstmove = 0;
+                SEARCHED_DATA_VEC.with(|vec| {
+                    //     vec.borrow_mut()[beem].eval += processdata.before_eval;
+                    eval = vec.borrow()[beem].eval;
+                    firstmove = vec.borrow()[beem].move_value;
+                });
 
                 let first: i64;
 
                 if processdata.first_move == -1 {
-                    first = searched_data_vec[beem].move_value;
+                    first = firstmove;
                 } else {
                     first = processdata.first_move;
                 }
@@ -222,7 +238,7 @@ impl BeemSearch {
                         hold: processdata.hold,
                         can_hold: processdata.can_hold,
                         field: value.borrow()[beem],
-                        before_eval: searched_data_vec[beem].eval,
+                        before_eval: eval,
                         first_move: first,
                     }
                 });
@@ -231,19 +247,19 @@ impl BeemSearch {
                     queue.lock().unwrap().push(process_data);
                 }
             }
-
-            {
-                counter.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
-            }
+        }
+        {
+            counter.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
         }
 
         fn init() {
             PASSED_TREE_ROUTE_SET.with(|value| value.borrow_mut().clear());
             VEC_FIELD.with(|value| value.borrow_mut().clear());
             SEARCHED_DATA.with(|value| value.borrow_mut().clear());
+            SEARCHED_DATA_VEC.with(|value| value.borrow_mut().clear());
         }
 
-        fn update_ifbetter(best: &mut SearchedPattern, test: &SearchedPattern, move_value: i64) {
+        fn update_if_better(best: &mut SearchedPattern, test: &SearchedPattern, move_value: i64) {
             if best.position == -1 || test.eval > best.eval {
                 *best = *test;
                 best.move_value = move_value;
@@ -333,11 +349,12 @@ impl BeemSearch {
                     }
 
                     let cleared_line = Environment::check_and_clear_line(&mut field_clone);
-                    pattern.eval = Evaluation::evaluate(&field_clone, &newmino, cleared_line);
+                    pattern.eval =
+                        Evaluation::evaluate(&field_clone, &newmino, cleared_line) + before_eval;
 
                     VEC_FIELD.with(|value| {
                         value.borrow_mut().push(field_clone);
-                        pattern.field_index = mutvalue.len() as i32 - 1;
+                        pattern.field_index = value.borrow().len() as i32 - 1;
                     });
 
                     mutvalue.insert(hash, pattern);
@@ -353,7 +370,7 @@ impl BeemSearch {
 
             if !Self::is_passed_before(
                 newmino.mino_kind,
-                mino.position,
+                newmino.position,
                 Vector2::MX1.x,
                 Vector2::MX1.y,
                 mino.rotation,
@@ -384,7 +401,7 @@ impl BeemSearch {
 
             if !Self::is_passed_before(
                 newmino.mino_kind,
-                mino.position,
+                newmino.position,
                 Vector2::X1.x,
                 Vector2::X1.y,
                 mino.rotation,
