@@ -1,7 +1,7 @@
 use crate::environment::*;
 use crate::evaluation::*;
-use crate::grobaldata::*;
 use crate::threadpool::ThreadPool;
+use crate::THREAD_POOL;
 use std::cell::RefCell;
 use std::collections::hash_set;
 use std::collections::HashMap;
@@ -10,6 +10,7 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+///処理データ
 struct ProcessData {
     current: i8,
     next: i8,
@@ -50,6 +51,7 @@ impl ProcessData {
 }
 
 #[derive(Clone, Copy)]
+///検索データ
 pub struct SearchedPattern {
     pub move_value: i64,
     pub position: i64,
@@ -70,16 +72,21 @@ impl SearchedPattern {
     }
 }
 
+///検索：ビームサーチ
 pub struct BeemSearch;
 
 thread_local! {
- pub   static vec_field:RefCell<Vec<[bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT]>>={let mut m=Vec::new(); RefCell::new(m)};
- pub static searched_data:RefCell<HashMap<i64, SearchedPattern>>={let mut m=HashMap::new(); RefCell::new(m)};
-pub static passed_tree_route_set:RefCell<HashSet<i64>>={let mut m=HashSet::new();RefCell::new(m)};
+    ///フィールド情報群
+    pub static VEC_FIELD:RefCell<Vec<[bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT]>>={let  m=Vec::new(); RefCell::new(m)};
+    ///検索したデータ
+    pub static SEARCHED_DATA:RefCell<HashMap<i64, SearchedPattern>>={let  m=HashMap::new(); RefCell::new(m)};
+    //過去に通過した位置を記録
+    pub static PASSED_TREE_ROUTE_SET:RefCell<HashSet<i64>>={let  m=HashSet::new();RefCell::new(m)};
 }
 
 impl BeemSearch {
-    fn get_best_move(
+    ///最も評価の高い行動を取得
+    pub fn get_best_move(
         current: i8,
         nexts: &[i8],
         hold: i8,
@@ -87,13 +94,22 @@ impl BeemSearch {
         field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
         next_count: i8,
     ) -> i64 {
-        let mut next_int = 0;
+        let queue = Arc::new(Mutex::new(Vec::<ProcessData>::new()));
+        let counter = Arc::new(AtomicUsize::new(0));
 
-        for i in 0..next_count {
-            next_int = nexts[i as usize] * (10 * next_count - i - 1);
+        //[1,2,3,4] -> 1234
+        let mut next_int = 0;
+        for i in 0..4 {
+            next_int += {
+                let mut temp = nexts[i];
+                for _i in 0..(4 - i - 1) {
+                    temp *= 10;
+                }
+                temp
+            };
         }
-        eprintln!("next_int={}", next_int);
-        let mut data = ProcessData {
+
+        let data = ProcessData {
             current: current,
             next: next_int,
             next_count: next_count,
@@ -104,9 +120,13 @@ impl BeemSearch {
             first_move: 0,
         };
 
-        1
+        queue.lock().unwrap().push(data);
+        counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
+        Self::get_loop(queue, counter)
     }
 
+    ///スレッド別に処理データを渡して処理する関数
     fn proceed_task(
         processdata: &ProcessData,
         counter: Arc<AtomicUsize>,
@@ -129,7 +149,7 @@ impl BeemSearch {
         );
         let mut searched_data_vec = Vec::<SearchedPattern>::new();
 
-        searched_data.with(|value| searched_data_vec.extend(value.borrow().values().into_iter()));
+        SEARCHED_DATA.with(|value| searched_data_vec.extend(value.borrow().values().into_iter()));
 
         let beem_width;
 
@@ -194,7 +214,7 @@ impl BeemSearch {
                 counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
                 let mut process_data = ProcessData::new();
-                vec_field.with(|value| {
+                VEC_FIELD.with(|value| {
                     process_data = ProcessData {
                         current: new_current,
                         next: new_next,
@@ -218,9 +238,9 @@ impl BeemSearch {
         }
 
         fn init() {
-            passed_tree_route_set.with(|value| value.borrow_mut().clear());
-            vec_field.with(|value| value.borrow_mut().clear());
-            searched_data.with(|value| value.borrow_mut().clear());
+            PASSED_TREE_ROUTE_SET.with(|value| value.borrow_mut().clear());
+            VEC_FIELD.with(|value| value.borrow_mut().clear());
+            SEARCHED_DATA.with(|value| value.borrow_mut().clear());
         }
 
         fn update_ifbetter(best: &mut SearchedPattern, test: &SearchedPattern, move_value: i64) {
@@ -231,11 +251,9 @@ impl BeemSearch {
         }
     }
 
-    fn get_loop(grobal_data: &'static mut GrobalData) {
-        let counter = Arc::new(AtomicUsize::new(0));
-        let queue = Arc::new(Mutex::new(Vec::<ProcessData>::new()));
-        let hashmap = HashMap::<i32, i64>::new();
-        let thread_pool = ThreadPool::new(num_cpus::get());
+    ///処理データをマルチスレッドに分配して処理する関数
+    fn get_loop(queue: Arc<Mutex<Vec<ProcessData>>>, counter: Arc<AtomicUsize>) -> i64 {
+        let thread_pool = THREAD_POOL.get().unwrap().lock().unwrap();
         let best = Arc::new(Mutex::new(SearchedPattern::new()));
 
         loop {
@@ -247,14 +265,19 @@ impl BeemSearch {
             match data {
                 Some(result) => {
                     thread_pool.execute(move || {
-                        Self::proceed_task(&result, counter, queue, Arc::clone(&best));
+                        Self::proceed_task(&result, counter, queue, best);
                     });
                 }
-                None => {}
+                None => {
+                    if counter.load(std::sync::atomic::Ordering::SeqCst) == 0 {
+                        return best.lock().unwrap().move_value;
+                    }
+                }
             }
         }
     }
 
+    //再帰で設置パターン列挙
     fn search(
         mino: &mut Mino,
         field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
@@ -287,7 +310,7 @@ impl BeemSearch {
             let hash =
                 Self::get_hash_for_position(newmino.mino_kind, newmino.rotation, &newmino.position);
 
-            searched_data.with(|value| {
+            SEARCHED_DATA.with(|value| {
                 let mut mutvalue = value.borrow_mut();
                 if let Some(result) = mutvalue.get_mut(&hash) {
                     if result.move_count > move_count {
@@ -312,7 +335,7 @@ impl BeemSearch {
                     let cleared_line = Environment::check_and_clear_line(&mut field_clone);
                     pattern.eval = Evaluation::evaluate(&field_clone, &newmino, cleared_line);
 
-                    vec_field.with(|value| {
+                    VEC_FIELD.with(|value| {
                         value.borrow_mut().push(field_clone);
                         pattern.field_index = mutvalue.len() as i32 - 1;
                     });
@@ -468,7 +491,7 @@ impl BeemSearch {
 
         let hash = Self::get_hash_for_position(kind, newrotation, &pos);
         let mut result = false;
-        passed_tree_route_set.with(|value| {
+        PASSED_TREE_ROUTE_SET.with(|value| {
             result = value.borrow().contains(&hash);
 
             if !result && apply_history {
