@@ -11,7 +11,7 @@ use evaluation::Evaluation;
 use grobaldata::GrobalData;
 use num_cpus;
 use once_cell::sync::OnceCell;
-use std::{thread, time};
+use std::{sync::Mutex, thread, time};
 use thread_id;
 use threadpool::ThreadPool;
 use winconsole::console::{self, getch};
@@ -22,15 +22,15 @@ fn test(index: usize) {
 }
 
 pub static WEIGHT: OnceCell<[f64; Evaluation::WEIGHT_COUNT as usize]> = OnceCell::new();
+pub static THREAD_POOL: OnceCell<Mutex<ThreadPool>> = OnceCell::new();
 
 fn main() {
-    let pool = ThreadPool::new(2);
-    for i in 0..10 {
-        pool.execute(move || {
-            test(i);
-        });
-    }
-
+    assert!(
+        THREAD_POOL
+            .set(Mutex::new(ThreadPool::new(num_cpus::get())))
+            .is_ok(),
+        "スレッドプールの初期化失敗"
+    );
     getch(true).unwrap();
 
     let mut environment = Environment::new();

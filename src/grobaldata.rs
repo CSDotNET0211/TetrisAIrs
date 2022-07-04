@@ -2,7 +2,6 @@ use crate::{beemsearch::SearchedPattern, environment::*, evaluation::*};
 use std::{
     collections::{HashMap, HashSet},
     ops::{Index, IndexMut},
-    vec,
 };
 
 pub struct GrobalData {

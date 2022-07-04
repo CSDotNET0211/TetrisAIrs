@@ -1,16 +1,15 @@
-use std::{cell::RefCell, ops::IndexMut};
+use std::cell::RefCell;
 
 use crate::{
     environment::{Environment, Mino},
-    grobaldata::{Data, GrobalData},
     WEIGHT,
 };
 
 pub struct Evaluation {}
 
 thread_local! {
-    static row_height:RefCell<[i32;Environment::FIELD_WIDTH]>={let mut m=[0;Environment::FIELD_WIDTH]; RefCell::new(m)};
-    static heights_without_ido:RefCell<Vec<i32>>={let mut m=Vec::new();RefCell::new(m)};
+    static ROW_HEIGHT:RefCell<[i32;Environment::FIELD_WIDTH]>={let m=[0;Environment::FIELD_WIDTH]; RefCell::new(m)};
+    static HEIGHTS_WITHOUT_IDO:RefCell<Vec<i32>>={let m=Vec::new();RefCell::new(m)};
 }
 
 impl Evaluation {
@@ -36,7 +35,7 @@ impl Evaluation {
 
             let mut _y = Environment::FIELD_HEIGHT as isize - 1;
 
-            row_height.with(|value| {
+            ROW_HEIGHT.with(|value| {
                 let mut mutvalue = value.borrow_mut();
                 rowheight_len = mutvalue.len();
 
@@ -62,18 +61,18 @@ impl Evaluation {
             });
         }
         {
-            heights_without_ido.with(|value| {
+            HEIGHTS_WITHOUT_IDO.with(|value| {
                 let mut mutvalue = value.borrow_mut();
                 mutvalue.clear();
 
-                row_height.with(|rowheight| mutvalue.extend(rowheight.borrow().iter().clone()));
+                ROW_HEIGHT.with(|rowheight| mutvalue.extend(rowheight.borrow().iter().clone()));
 
                 mutvalue.remove(smallest_index as usize);
             });
         }
 
         let mut sum_of_height = 0;
-        row_height.with(|value| sum_of_height = value.borrow().iter().sum::<i32>());
+        ROW_HEIGHT.with(|value| sum_of_height = value.borrow().iter().sum::<i32>());
         let mut hole_count = 0;
 
         let mut y = Environment::FIELD_HEIGHT - 1;
@@ -88,7 +87,7 @@ impl Evaluation {
         }
 
         let mut bump = 0;
-        heights_without_ido.with(|value| {
+        HEIGHTS_WITHOUT_IDO.with(|value| {
             let mutvalue = value.borrow_mut();
 
             for i in 0..rowheight_len - 1 - 1 {
