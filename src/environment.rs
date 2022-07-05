@@ -1,6 +1,8 @@
 use core::panic;
 use rand::prelude::*;
 
+use crate::beemsearch::BeemSearch;
+
 pub struct Vector2 {
     pub x: i32,
     pub y: i32,
@@ -528,7 +530,14 @@ impl Environment {
     }
 
     pub fn search(&self) -> i64 {
-        0
+        BeemSearch::get_best_move(
+            self.now_mino.mino_kind,
+            &self.next,
+            self.now_hold,
+            self.can_hold,
+            &self.field,
+            self.next.len() as i8,
+        )
     }
 
     pub fn print_game() {}

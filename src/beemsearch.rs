@@ -13,7 +13,7 @@ use std::sync::Mutex;
 ///処理データ
 struct ProcessData {
     current: i8,
-    next: i8,
+    next: i32,
     next_count: i8,
     hold: i8,
     can_hold: bool,
@@ -103,7 +103,7 @@ impl BeemSearch {
         let mut next_int = 0;
         for i in 0..next_count {
             next_int += {
-                let mut temp = nexts[i as usize];
+                let mut temp = nexts[i as usize] as i32;
                 for _i in 0..(4 - i - 1) {
                     temp *= 10;
                 }
@@ -232,7 +232,7 @@ impl BeemSearch {
                 let mut process_data = ProcessData::new();
                 VEC_FIELD.with(|value| {
                     process_data = ProcessData {
-                        current: new_current,
+                        current: new_current as i8,
                         next: new_next,
                         next_count: processdata.next_count - 1,
                         hold: processdata.hold,
