@@ -1,3 +1,5 @@
+use crate::draw;
+use crate::draw::*;
 use crate::environment::*;
 use crate::evaluation::*;
 use crate::threadpool::ThreadPool;
@@ -96,20 +98,21 @@ impl BeemSearch {
         field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
         next_count: i8,
     ) -> i64 {
-        let queue = Arc::new(Mutex::new(Vec::<ProcessData>::new()));
         let counter = Arc::new(AtomicUsize::new(0));
+        //     let next_count = 1;
 
         //vec![1,2,3,4] -> 1234
         let mut next_int = 0;
         for i in 0..next_count {
             next_int += {
                 let mut temp = nexts[i as usize] as i32;
-                for _i in 0..(4 - i - 1) {
+                for _i in 0..(next_count - i - 1) {
                     temp *= 10;
                 }
                 temp
             };
         }
+        println!("{}", next_int);
 
         let data = ProcessData {
             current: current,
@@ -122,7 +125,12 @@ impl BeemSearch {
             first_move: -1,
         };
 
-        queue.lock().unwrap().push(data);
+        let queue = Arc::new(Mutex::new(Vec::<ProcessData>::new()));
+
+        {
+            queue.lock().unwrap().push(data);
+        }
+
         counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         Self::get_loop(queue, counter)
@@ -191,6 +199,8 @@ impl BeemSearch {
                 });
             }
 
+            draw::print_debug(&fie);
+
             {
                 let mut value = best.lock().unwrap();
                 if value.eval < best_in_this_pattern.eval {
@@ -218,19 +228,31 @@ impl BeemSearch {
 
                 let mut new_current = processdata.next;
                 let mut new_next = processdata.next;
-                let mut temp_div = 10;
+                let beforenext = new_next;
+                let mut temp_div = 1;
 
                 for _i in 0..processdata.next_count - 1 {
                     new_current /= 10;
                     temp_div *= 10;
                 }
 
-                new_next %= temp_div;
+                if new_current != 0 {
+                    new_next %= temp_div * new_current;
+                }
 
-                counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                if cfg!(debug_assertions) {
+                    if new_current > 6 {
+                        panic!("ミノの値が適切なものではありません");
+                    }
 
-                let mut process_data = ProcessData::new();
+                    if new_current != 0 && new_next == processdata.next {
+                        panic!("ネクストの値が更新されていません:{}", beforenext);
+                    }
+                }
+
                 VEC_FIELD.with(|value| {
+                    let process_data;
+
                     process_data = ProcessData {
                         current: new_current as i8,
                         next: new_next,
@@ -240,17 +262,17 @@ impl BeemSearch {
                         field: value.borrow()[beem],
                         before_eval: eval,
                         first_move: first,
+                    };
+
+                    counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    {
+                        queue.lock().unwrap().push(process_data);
                     }
                 });
-
-                {
-                    queue.lock().unwrap().push(process_data);
-                }
             }
         }
-        {
-            counter.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
-        }
+
+        counter.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
 
         fn init() {
             PASSED_TREE_ROUTE_SET.with(|value| value.borrow_mut().clear());
@@ -274,12 +296,12 @@ impl BeemSearch {
 
         loop {
             let data = queue.lock().unwrap().pop();
-            let counter = Arc::clone(&counter);
-            let best = Arc::clone(&best);
-            let queue = Arc::clone(&queue);
 
             match data {
                 Some(result) => {
+                    let counter = Arc::clone(&counter);
+                    let best = Arc::clone(&best);
+                    let queue = Arc::clone(&queue);
                     thread_pool.execute(move || {
                         Self::proceed_task(&result, counter, queue, best);
                     });
@@ -303,9 +325,15 @@ impl BeemSearch {
         lock_direction: i8,
         rotate_count: i32,
     ) {
+        if cfg!(debug_assertions) {
+            if move_count > 9 {
+                panic!("ループしてない？");
+            }
+        }
+        //無駄な回転検索がある
         //ハードドロップ
         {
-            let mut new_move_diff = Action::HARD_DROP as i32;
+            let mut new_move_diff = Action::HARD_DROP as i64;
             for _i in 0..move_count {
                 new_move_diff *= 10;
             }
@@ -314,11 +342,11 @@ impl BeemSearch {
             let mut temp = 0;
 
             loop {
-                temp += 1;
                 if Environment::check_valid_pos(&field, &newmino, &Vector2::new(0, -temp), 0) {
                     temp -= 1;
                     break;
                 }
+                temp += 1;
             }
 
             newmino.move_pos(0, -temp);
@@ -331,13 +359,13 @@ impl BeemSearch {
                 if let Some(result) = mutvalue.get_mut(&hash) {
                     if result.move_count > move_count {
                         result.move_count = move_count;
-                        result.move_value = move_value + new_move_diff as i64;
+                        result.move_value = move_value + new_move_diff;
                     }
                 } else {
                     let mut pattern = SearchedPattern::new();
                     pattern.position = newmino.position;
                     pattern.move_count = move_count;
-                    pattern.move_value = move_value + new_move_diff as i64;
+                    pattern.move_value = move_value + new_move_diff;
 
                     let mut field_clone = field.clone();
 
@@ -365,6 +393,7 @@ impl BeemSearch {
         //左移動
         if lock_direction != Action::MOVE_RIGHT
             && Environment::check_valid_pos(&field, &mino, &Vector2::MX1, 0)
+            && rotate_count != 0
         {
             let mut newmino = mino.clone();
 
@@ -396,6 +425,7 @@ impl BeemSearch {
         //右移動
         if lock_direction != Action::MOVE_LEFT
             && Environment::check_valid_pos(&field, &mino, &Vector2::X1, 0)
+            && rotate_count != 0
         {
             let mut newmino = mino.clone();
 
@@ -420,7 +450,7 @@ impl BeemSearch {
                     move_count + 1,
                     move_value + temp,
                     &before_eval,
-                    Action::MOVE_LEFT,
+                    Action::MOVE_RIGHT,
                     rotate_count,
                 );
             }

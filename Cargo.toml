@@ -17,6 +17,7 @@ crossterm = "*"
 num_cpus="*"
 thread-id = "*"
 once_cell = "*"
+libm = "*"
 
 [dependencies.winconsole]
 version = "0.11.1"

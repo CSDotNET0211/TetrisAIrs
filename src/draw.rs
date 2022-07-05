@@ -96,4 +96,12 @@ pub fn print(field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH
     stdout.flush().unwrap();
 }
 
+pub fn print_debug(
+    field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
+    mino: &Mino,
+    move_value: i64,
+    eval: f64,
+) {
+}
+
 fn get_mino_form(minokind: i8) {}

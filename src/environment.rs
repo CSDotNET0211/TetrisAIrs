@@ -201,7 +201,7 @@ impl Mino {
 
     pub fn add_position_xy(array: &mut i64, x: i32, y: i32) {
         let value = y + (x * 100);
-        let mut temp = value;
+        let mut temp = value as i64;
 
         for i in 1..5 {
             if i != 1 {
@@ -509,7 +509,7 @@ impl Environment {
             MinoKind::S => 0419051903180418,
             MinoKind::Z => 0319041904180518,
             MinoKind::T => 0419031804180518,
-            _ => panic!("存在しない型"),
+            _ => panic!("存在しない型:{}", *kind),
         }
     }
 

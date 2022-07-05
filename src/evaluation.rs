@@ -20,43 +20,44 @@ impl Evaluation {
         let weight = WEIGHT.get().unwrap();
 
         match cleared_line {
+            0 => cleared_value = 0.0,
             1 => cleared_value = weight[1],
             2 => cleared_value = weight[2],
             3 => cleared_value = weight[3],
             4 => cleared_value = weight[4],
-            _ => panic!("1~4ライン消しじゃないよ"),
+            _ => panic!("0~4ライン消しじゃないよ"),
         }
         let mut rowheight_len = 0;
 
         let mut smallest_index = -1 as i32;
         let mut smallest = 50 as i32;
-        for _x in 0..Environment::FIELD_WIDTH {
+        for x in 0..Environment::FIELD_WIDTH {
             let mut flag = true;
 
-            let mut _y = Environment::FIELD_HEIGHT as isize - 1;
+            let mut y = Environment::FIELD_HEIGHT as isize - 1;
 
             ROW_HEIGHT.with(|value| {
                 let mut mutvalue = value.borrow_mut();
                 rowheight_len = mutvalue.len();
 
-                while _y >= 0 {
-                    if field[_x + _y as usize * 10] {
-                        if smallest > _y as i32 {
-                            smallest = _y as i32;
-                            smallest_index = _x as i32;
+                while y >= 0 {
+                    if field[x + y as usize * 10] {
+                        if smallest > y as i32 {
+                            smallest = y as i32;
+                            smallest_index = x as i32;
                         }
-                        mutvalue[_x] = _y as i32;
+                        mutvalue[x] = y as i32 + 1;
                         flag = false;
 
-                        _y -= 1;
                         break;
                     }
+                    y -= 1;
                 }
 
                 if flag {
                     smallest_index = -1;
                     smallest = 50;
-                    mutvalue[_x] = -1;
+                    mutvalue[x] = 0;
                 }
             });
         }
@@ -67,7 +68,9 @@ impl Evaluation {
 
                 ROW_HEIGHT.with(|rowheight| mutvalue.extend(rowheight.borrow().iter().clone()));
 
-                mutvalue.remove(smallest_index as usize);
+                if smallest_index != -1 {
+                    mutvalue.remove(smallest_index as usize);
+                }
             });
         }
 
