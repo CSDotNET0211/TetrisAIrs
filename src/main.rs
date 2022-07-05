@@ -31,10 +31,15 @@ fn main() {
             .is_ok(),
         "スレッドプールの初期化失敗"
     );
-    getch(true).unwrap();
+
+    assert!(WEIGHT.set([1,2,3]))
 
     let mut environment = Environment::new();
     environment.init();
+
+    println!("{}", environment.search());
+    getch(true);
+
     let sleeptime = time::Duration::from_millis(30);
     let frame_time = time::Duration::from_millis(1000 / 30);
     let mut GrobalData = GrobalData::new(num_cpus::get() as u32);
