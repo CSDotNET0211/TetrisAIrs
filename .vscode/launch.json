@@ -21,7 +21,7 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}",
-            "console": "externalTerminal"
+            //   "console": "externalTerminal"
         },
         {
             "type": "lldb",

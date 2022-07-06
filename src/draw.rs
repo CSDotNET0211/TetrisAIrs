@@ -11,11 +11,18 @@ use std::{
 };
 
 pub fn print(field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH], mino: &Mino) {
-    enable_raw_mode().unwrap();
+    //    enable_raw_mode().unwrap();
 
     let mut stdout = stdout();
 
-    execute!(stdout, Hide, DisableBlinking, cursor::MoveTo(0, 0)).unwrap();
+    execute!(
+        stdout,
+        Hide,
+        DisableBlinking,
+        cursor::MoveTo(0, 0),
+        //Clear()
+    )
+    .unwrap();
     queue!(stdout, cursor::MoveTo(0, 0)).unwrap();
 
     let mut y = Environment::FIELD_HEIGHT as i32 - 1;

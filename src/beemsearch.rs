@@ -211,7 +211,6 @@ impl BeemSearch {
                 let mut eval = 0.0;
                 let mut firstmove = 0;
                 SEARCHED_DATA_VEC.with(|vec| {
-                    //     vec.borrow_mut()[beem].eval += processdata.before_eval;
                     eval = vec.borrow()[beem].eval;
                     firstmove = vec.borrow()[beem].move_value;
                 });
@@ -325,11 +324,10 @@ impl BeemSearch {
         move_flag: bool,
     ) {
         if cfg!(debug_assertions) {
-            if move_count > 9 {
+            if move_count > 11 {
                 panic!("ループしてない？");
             }
         }
-        //無駄な回転検索がある
         //ハードドロップ
         {
             let mut new_move_diff = Action::HARD_DROP as i64;
@@ -376,8 +374,8 @@ impl BeemSearch {
                     }
 
                     let cleared_line = Environment::check_and_clear_line(&mut field_clone);
-                    pattern.eval = Evaluation::evaluate(&field_clone, &newmino, cleared_line)
-                        + before_eval * 1.0;
+                    pattern.eval =
+                        Evaluation::evaluate(&field_clone, &newmino, cleared_line) + before_eval;
 
                     VEC_FIELD.with(|value| {
                         value.borrow_mut().push(field_clone);

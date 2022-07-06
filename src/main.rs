@@ -2,6 +2,7 @@ mod beemsearch;
 mod draw;
 mod environment;
 mod evaluation;
+mod geneticalgorithm;
 mod grobaldata;
 mod threadpool;
 
@@ -17,17 +18,15 @@ use std::{
     thread, time,
 };
 
-use thread_id;
 use threadpool::ThreadPool;
-use winconsole::console::{self, getch};
-
 pub static WEIGHT: OnceCell<[f64; Evaluation::WEIGHT_COUNT as usize]> = OnceCell::new();
 pub static THREAD_POOL: OnceCell<Mutex<ThreadPool>> = OnceCell::new();
 
+//デバッグ用でスレッド数変えてる
 fn main() {
     assert!(
         THREAD_POOL
-            .set(Mutex::new(ThreadPool::new(num_cpus::get())))
+            .set(Mutex::new(ThreadPool::new(1 /*num_cpus::get() */)))
             .is_ok(),
         "スレッドプールの初期化失敗"
     );
@@ -44,6 +43,7 @@ fn main() {
 
     let mut environment = Environment::new();
     environment.init();
+    geneticalgorithm::bench_mark_test();
 
     // environment.now_mino.mino_kind = 4;
     //  environment.next = [4, 4, 4, 4, 4];
@@ -57,12 +57,12 @@ fn main() {
     let frame_time = time::Duration::from_millis(1000 / 30);
     let mut GrobalData = GrobalData::new(num_cpus::get() as u32);
 
-    // console::clear().unwrap();
     loop {
+        //  console::clear().unwrap();
         print(&environment.get_field_ref(), &environment.now_mino);
 
         //   getch(true).unwrap();
-        thread::sleep_ms(500);
+        thread::sleep_ms(1000);
         //io::stdin().read_line(&mut buf).unwrap();
 
         let mut result = environment.search();
