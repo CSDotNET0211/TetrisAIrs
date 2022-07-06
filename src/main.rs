@@ -45,7 +45,8 @@ fn main() {
     let mut environment = Environment::new();
     environment.init();
 
-    environment.next = [4, 4, 4, 4, 4];
+    // environment.now_mino.mino_kind = 4;
+    //  environment.next = [4, 4, 4, 4, 4];
 
     println!("何かキーを入力して検索を開始");
     //   let key = getch(true).unwrap();
@@ -65,7 +66,7 @@ fn main() {
         //io::stdin().read_line(&mut buf).unwrap();
 
         let mut result = environment.search();
-        println!("{}", result);
+        //println!("{}", result);
         let count = degit(result);
 
         for _i in 0..count {

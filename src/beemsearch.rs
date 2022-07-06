@@ -99,7 +99,7 @@ impl BeemSearch {
         next_count: i8,
     ) -> i64 {
         let counter = Arc::new(AtomicUsize::new(0));
-        let next_count = 0;
+        let next_count = 1;
 
         //vec![1,2,3,4] -> 1234
         let mut next_int = 0;
@@ -156,6 +156,7 @@ impl BeemSearch {
             &processdata.before_eval,
             Action::NULL,
             0,
+            false,
         );
 
         SEARCHED_DATA.with(|value| {
@@ -321,6 +322,7 @@ impl BeemSearch {
         before_eval: &f64,
         lock_direction: i8,
         rotate_count: i32,
+        move_flag: bool,
     ) {
         if cfg!(debug_assertions) {
             if move_count > 9 {
@@ -375,7 +377,7 @@ impl BeemSearch {
 
                     let cleared_line = Environment::check_and_clear_line(&mut field_clone);
                     pattern.eval = Evaluation::evaluate(&field_clone, &newmino, cleared_line)
-                        + before_eval * 0.3;
+                        + before_eval * 1.0;
 
                     VEC_FIELD.with(|value| {
                         value.borrow_mut().push(field_clone);
@@ -390,7 +392,6 @@ impl BeemSearch {
         //左移動
         if lock_direction != Action::MOVE_RIGHT
             && Environment::check_valid_pos(&field, &mino, &Vector2::MX1, 0)
-            && rotate_count != 0
         {
             let mut newmino = mino.clone();
 
@@ -416,13 +417,13 @@ impl BeemSearch {
                     &before_eval,
                     Action::MOVE_LEFT,
                     rotate_count,
+                    true,
                 );
             }
         }
         //右移動
         if lock_direction != Action::MOVE_LEFT
             && Environment::check_valid_pos(&field, &mino, &Vector2::X1, 0)
-            && rotate_count != 0
         {
             let mut newmino = mino.clone();
 
@@ -449,13 +450,17 @@ impl BeemSearch {
                     &before_eval,
                     Action::MOVE_RIGHT,
                     rotate_count,
+                    true,
                 );
             }
         }
 
         let mut result = Vector2::ZERO;
         //右回転
-        if rotate_count < 3 && Environment::try_rotate(Rotate::RIGHT, &field, mino, &mut result) {
+        if !move_flag
+            && rotate_count < 3
+            && Environment::try_rotate(Rotate::RIGHT, &field, mino, &mut result)
+        {
             let mut newmino = mino.clone();
             let mut newrotation = newmino.rotation;
             Environment::get_next_rotate(Rotate::RIGHT, &mut newrotation);
@@ -484,12 +489,16 @@ impl BeemSearch {
                     &before_eval,
                     lock_direction,
                     rotate_count + 1,
+                    move_flag,
                 );
             }
         }
 
         //左回転
-        if rotate_count < 3 && Environment::try_rotate(Rotate::LEFT, &field, mino, &mut result) {
+        if !move_flag
+            && rotate_count < 3
+            && Environment::try_rotate(Rotate::LEFT, &field, mino, &mut result)
+        {
             let mut newmino = mino.clone();
             let mut newrotation = newmino.rotation;
             Environment::get_next_rotate(Rotate::LEFT, &mut newrotation);
@@ -518,6 +527,7 @@ impl BeemSearch {
                     &before_eval,
                     lock_direction,
                     rotate_count + 1,
+                    move_flag,
                 );
             }
         }
