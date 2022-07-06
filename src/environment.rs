@@ -258,9 +258,9 @@ pub struct Environment {
     score: isize,
     dead_flag: bool,
     pub now_mino: Mino,
-    next: [i8; 5],
+    pub next: [i8; 5],
     random: ThreadRng,
-    field: [bool; Self::FIELD_WIDTH as usize * Self::FIELD_HEIGHT as usize],
+    pub field: [bool; Self::FIELD_WIDTH as usize * Self::FIELD_HEIGHT as usize],
     can_hold: bool,
     now_hold: i8,
 }

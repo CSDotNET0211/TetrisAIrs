@@ -99,7 +99,7 @@ impl BeemSearch {
         next_count: i8,
     ) -> i64 {
         let counter = Arc::new(AtomicUsize::new(0));
-        let next_count = 1;
+        let next_count = 0;
 
         //vec![1,2,3,4] -> 1234
         let mut next_int = 0;
@@ -543,10 +543,7 @@ impl BeemSearch {
             }
         });
 
-        if result {
-            return true;
-        }
-        return false;
+        result
     }
 
     fn get_hash_for_position(kind: i8, rotation: i8, position: &i64) -> i64 {

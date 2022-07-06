@@ -44,6 +44,9 @@ fn main() {
 
     let mut environment = Environment::new();
     environment.init();
+
+    environment.next = [4, 4, 4, 4, 4];
+
     println!("何かキーを入力して検索を開始");
     //   let key = getch(true).unwrap();
     let mut buf = String::new();
@@ -53,7 +56,7 @@ fn main() {
     let frame_time = time::Duration::from_millis(1000 / 30);
     let mut GrobalData = GrobalData::new(num_cpus::get() as u32);
 
-    console::clear().unwrap();
+    // console::clear().unwrap();
     loop {
         print(&environment.get_field_ref(), &environment.now_mino);
 

@@ -75,7 +75,7 @@ impl Evaluation {
                 ROW_HEIGHT
                     .with(|rowheight| height_without_ido.extend(rowheight.borrow().iter().clone()));
 
-                if smallest_index != -1 {
+                if smallest_index != -1 && false {
                     height_without_ido.remove(smallest_index as usize);
                 }
             });
@@ -104,31 +104,41 @@ impl Evaluation {
                 bump += (value[i] - value[i + 1]).abs();
             }
         });
+        /*
+               let eval = (weight[0] * sum_of_height as f64)
+                   + cleared_value
+                   + (weight[5] * hole_count as f64)
+                   + (weight[6] * bump as f64)
+                   + (weight[7] * (hole_count * sum_of_height * sum_of_height) as f64)
+                   + (weight[8]
+                       * (bump as isize * sum_of_height as isize * sum_of_height as isize) as f64);
+        */
 
-        let eval = (weight[0] * sum_of_height as f64)
-            + cleared_value
-            + (weight[5] * hole_count as f64)
-            + (weight[6] * bump as f64)
-            + (weight[7] * (hole_count * sum_of_height * sum_of_height) as f64)
-            + (weight[8]
-                * (bump as isize * sum_of_height as isize * sum_of_height as isize) as f64);
+        let eval = (sum_of_height as f64 * -0.51)
+            + (cleared_line as f64 * 0.76)
+            + (hole_count as f64 * -0.3566)
+            + (bump as f64 * -0.184);
 
         /*
-               draw::print_debug(field, mino, 0, eval);
+        draw::print_debug(field, mino, 0, eval);
+        println!(
+            "\nでこぼこ:{}\n消去ライン:{}\n穴:{}\n高さ合計:{}\n",
+            bump, cleared_line, hole_count, sum_of_height
+        );
+        let mut temp = String::new();
+        getch(true).unwrap();
+         */
+        /*
+        println!("高さ合計:{}\n消去ライン:{}\n穴:{}\nでこぼこ:{}\n穴に高さ合計2乗:{}\nでこぼこに高さ合計2乗:{}",
+            (weight[0] * sum_of_height as f64)
+                , cleared_value,
+                (weight[5] * hole_count as f64)
+                ,(weight[6] * bump as f64),
+                 (weight[7] * (hole_count * sum_of_height * sum_of_height) as f64)
+                , (weight[8]
+                    * (bump as isize * sum_of_height as isize * sum_of_height as isize) as f64)
+        ); */
 
-               println!("高さ合計:{}\n消去ライン:{}\n穴:{}\nでこぼこ:{}\n穴に高さ合計2乗:{}\nでこぼこに高さ合計2乗:{}",
-                   (weight[0] * sum_of_height as f64)
-                       , cleared_value,
-                       (weight[5] * hole_count as f64)
-                       ,(weight[6] * bump as f64),
-                        (weight[7] * (hole_count * sum_of_height * sum_of_height) as f64)
-                       , (weight[8]
-                           * (bump as isize * sum_of_height as isize * sum_of_height as isize) as f64)
-               );
-
-               let mut temp = String::new();
-               getch(true).unwrap();
-        */
         eval
     }
 }
