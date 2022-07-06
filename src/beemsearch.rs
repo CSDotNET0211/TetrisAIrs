@@ -99,7 +99,7 @@ impl BeemSearch {
         next_count: i8,
     ) -> i64 {
         let counter = Arc::new(AtomicUsize::new(0));
-        //     let next_count = 1;
+        let next_count = 1;
 
         //vec![1,2,3,4] -> 1234
         let mut next_int = 0;
@@ -198,9 +198,6 @@ impl BeemSearch {
                     update_if_better(&mut best_in_this_pattern, &vec.borrow_mut()[beem], first);
                 });
             }
-
-            draw::print_debug(&fie);
-
             {
                 let mut value = best.lock().unwrap();
                 if value.eval < best_in_this_pattern.eval {
@@ -342,7 +339,7 @@ impl BeemSearch {
             let mut temp = 0;
 
             loop {
-                if Environment::check_valid_pos(&field, &newmino, &Vector2::new(0, -temp), 0) {
+                if !Environment::check_valid_pos(&field, &newmino, &Vector2::new(0, -temp), 0) {
                     temp -= 1;
                     break;
                 }
@@ -370,15 +367,15 @@ impl BeemSearch {
                     let mut field_clone = field.clone();
 
                     for i in 0..4 {
-                        let x = Mino::get_position_from_value(pattern.position, i, true);
-                        let y = Mino::get_position_from_value(pattern.position, i, false);
+                        let x = Mino::get_position_from_value(newmino.position, i, true);
+                        let y = Mino::get_position_from_value(newmino.position, i, false);
 
                         field_clone[(x + y * 10) as usize] = true;
                     }
 
                     let cleared_line = Environment::check_and_clear_line(&mut field_clone);
-                    pattern.eval =
-                        Evaluation::evaluate(&field_clone, &newmino, cleared_line) + before_eval;
+                    pattern.eval = Evaluation::evaluate(&field_clone, &newmino, cleared_line)
+                        + before_eval * 0.3;
 
                     VEC_FIELD.with(|value| {
                         value.borrow_mut().push(field_clone);

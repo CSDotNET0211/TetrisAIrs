@@ -58,7 +58,7 @@ fn main() {
         print(&environment.get_field_ref(), &environment.now_mino);
 
         //   getch(true).unwrap();
-        thread::sleep_ms(1000);
+        thread::sleep_ms(500);
         //io::stdin().read_line(&mut buf).unwrap();
 
         let mut result = environment.search();

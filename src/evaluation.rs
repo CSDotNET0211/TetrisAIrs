@@ -1,6 +1,9 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, io};
+
+use winconsole::console::getch;
 
 use crate::{
+    draw,
     environment::{Environment, Mino},
     WEIGHT,
 };
@@ -16,6 +19,9 @@ impl Evaluation {
     pub const WEIGHT_COUNT: i32 = 9;
 
     pub fn evaluate(field: &[bool], mino: &Mino, cleared_line: i32) -> f64 {
+        //   HEIGHTS_WITHOUT_IDO.with(|value| value.borrow_mut().clear());
+        //ROW_HEIGHT.with(|value|{value.borrow_mut().cle})
+
         let cleared_value;
         let weight = WEIGHT.get().unwrap();
 
@@ -63,13 +69,14 @@ impl Evaluation {
         }
         {
             HEIGHTS_WITHOUT_IDO.with(|value| {
-                let mut mutvalue = value.borrow_mut();
-                mutvalue.clear();
+                let mut height_without_ido = value.borrow_mut();
+                height_without_ido.clear();
 
-                ROW_HEIGHT.with(|rowheight| mutvalue.extend(rowheight.borrow().iter().clone()));
+                ROW_HEIGHT
+                    .with(|rowheight| height_without_ido.extend(rowheight.borrow().iter().clone()));
 
                 if smallest_index != -1 {
-                    mutvalue.remove(smallest_index as usize);
+                    height_without_ido.remove(smallest_index as usize);
                 }
             });
         }
@@ -81,7 +88,7 @@ impl Evaluation {
         let mut y = Environment::FIELD_HEIGHT - 1;
         while y >= 1 {
             for x in 0..Environment::FIELD_WIDTH {
-                if field[x + y * 10] && field[x + (y - 1) * 10] {
+                if field[x + y * 10] && !field[x + (y - 1) * 10] {
                     hole_count += 1;
                 }
             }
@@ -91,18 +98,37 @@ impl Evaluation {
 
         let mut bump = 0;
         HEIGHTS_WITHOUT_IDO.with(|value| {
-            let mutvalue = value.borrow_mut();
+            let value = value.borrow();
 
             for i in 0..rowheight_len - 1 - 1 {
-                bump += (mutvalue[i] - mutvalue[i + 1]).abs();
+                bump += (value[i] - value[i + 1]).abs();
             }
         });
 
-        (weight[0] * sum_of_height as f64)
+        let eval = (weight[0] * sum_of_height as f64)
             + cleared_value
             + (weight[5] * hole_count as f64)
             + (weight[6] * bump as f64)
             + (weight[7] * (hole_count * sum_of_height * sum_of_height) as f64)
-            + (weight[8] * (bump as isize * sum_of_height as isize * sum_of_height as isize) as f64)
+            + (weight[8]
+                * (bump as isize * sum_of_height as isize * sum_of_height as isize) as f64);
+
+        /*
+               draw::print_debug(field, mino, 0, eval);
+
+               println!("高さ合計:{}\n消去ライン:{}\n穴:{}\nでこぼこ:{}\n穴に高さ合計2乗:{}\nでこぼこに高さ合計2乗:{}",
+                   (weight[0] * sum_of_height as f64)
+                       , cleared_value,
+                       (weight[5] * hole_count as f64)
+                       ,(weight[6] * bump as f64),
+                        (weight[7] * (hole_count * sum_of_height * sum_of_height) as f64)
+                       , (weight[8]
+                           * (bump as isize * sum_of_height as isize * sum_of_height as isize) as f64)
+               );
+
+               let mut temp = String::new();
+               getch(true).unwrap();
+        */
+        eval
     }
 }

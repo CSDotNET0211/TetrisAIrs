@@ -96,12 +96,44 @@ pub fn print(field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH
     stdout.flush().unwrap();
 }
 
-pub fn print_debug(
-    field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
-    mino: &Mino,
-    move_value: i64,
-    eval: f64,
-) {
+pub fn print_debug(field: &[bool], mino: &Mino, move_value: i64, eval: f64) {
+    let mut stdout = stdout();
+
+    execute!(stdout, Hide, DisableBlinking, cursor::MoveTo(0, 0)).unwrap();
+    queue!(stdout, cursor::MoveTo(0, 0)).unwrap();
+
+    let mut y = Environment::FIELD_HEIGHT as i32 - 1;
+    while y >= 0 {
+        for x in 0..Environment::FIELD_WIDTH {
+            if field[x + y as usize * 10] {
+                queue!(stdout, Print("■")).unwrap();
+            } else {
+                queue!(stdout, Print("□")).unwrap();
+            }
+        }
+        queue!(stdout, Print("\r\n")).unwrap();
+
+        y -= 1;
+    }
+
+    queue!(stdout, Print("\r\n")).unwrap();
+    queue!(stdout, Print("eval = ")).unwrap();
+    queue!(stdout, Print(eval)).unwrap();
+    /*
+    for _i in 0..4 as i32 {
+        let x = mino.get_position(_i, true);
+        let y = mino.get_position(_i, false);
+        queue!(
+            stdout,
+            cursor::MoveTo(
+                x as u16 * 2,
+                (Environment::FIELD_HEIGHT - 1 - y as usize) as u16,
+            )
+        )
+        .unwrap();
+
+        queue!(stdout, Print("■"));
+    } */
 }
 
 fn get_mino_form(minokind: i8) {}
