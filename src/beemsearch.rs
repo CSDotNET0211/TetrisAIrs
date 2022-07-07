@@ -8,6 +8,7 @@ use std::cell::RefCell;
 use std::collections::hash_set;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::io;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -147,6 +148,7 @@ impl BeemSearch {
         init();
 
         let mut mino = Environment::create_mino_1(processdata.current);
+        let debug_value = processdata.first_move;
 
         Self::search(
             &mut mino,
@@ -222,6 +224,10 @@ impl BeemSearch {
                 } else {
                     first = processdata.first_move;
                 }
+
+                //   println!("eval={}\nfirstmove={}", eval, firstmove);
+                // let mut ss = String::new();
+                // io::stdin().read_line(&mut ss).unwrap();
 
                 let mut new_current = processdata.next;
                 let mut new_next = processdata.next;
@@ -328,8 +334,13 @@ impl BeemSearch {
                 panic!("ループしてない？");
             }
         }
+
         //ハードドロップ
         {
+            if move_value == 11122 {
+                println!();
+            }
+
             let mut new_move_diff = Action::HARD_DROP as i64;
             for _i in 0..move_count {
                 new_move_diff *= 10;

@@ -11,7 +11,7 @@ impl GeneticAlgorithm {
     pub fn bench_mark_test() {
         let mut gen_count = 0;
         let random = rand::thread_rng();
-        let mut indivisuals = Vec::new();
+        //   let mut indivisuals = Vec::new();
 
         for _i in 0..30 {
             //     let param=
@@ -28,8 +28,8 @@ impl GeneticAlgorithm {
 
     fn elite_choise() {}
 
-    fn get_random(min: f64, max: f64, random: ThreadRng) {
+    fn get_random(min: f64, max: f64, mut random: ThreadRng) {
         let range = max - min;
-        let sample = random.gen_range(01);
+        let sample = random.gen_range(0..1);
     }
 }

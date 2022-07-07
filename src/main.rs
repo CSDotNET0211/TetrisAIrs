@@ -19,6 +19,8 @@ use std::{
 };
 
 use threadpool::ThreadPool;
+
+use crate::environment::MinoKind;
 pub static WEIGHT: OnceCell<[f64; Evaluation::WEIGHT_COUNT as usize]> = OnceCell::new();
 pub static THREAD_POOL: OnceCell<Mutex<ThreadPool>> = OnceCell::new();
 
@@ -42,11 +44,24 @@ fn main() {
     );
 
     let mut environment = Environment::new();
+    environment.next = [MinoKind::T, 5, 5, 5, 5];
     environment.init();
-    geneticalgorithm::bench_mark_test();
+    //    geneticalgorithm::bench_mark_test();
 
     // environment.now_mino.mino_kind = 4;
-    //  environment.next = [4, 4, 4, 4, 4];
+    environment.field = [false; 260];
+    for i in 0..40 {
+        environment.field[i] = true;
+    }
+    environment.field[3] = false;
+    environment.field[13] = false;
+    environment.field[23] = false;
+    environment.field[33] = false;
+
+    environment.field[30] = false;
+    environment.field[31] = false;
+    environment.field[32] = false;
+    environment.field[21] = false;
 
     println!("何かキーを入力して検索を開始");
     //   let key = getch(true).unwrap();

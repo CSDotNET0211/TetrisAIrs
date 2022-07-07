@@ -119,16 +119,17 @@ impl Evaluation {
             + (hole_count as f64 * -0.3566)
             + (bump as f64 * -0.184);
 
-        draw::print_debug(field, mino, 0, eval);
-        println!(
-            "\nでこぼこ:{}\n消去ライン:{}\n穴:{}\n高さ合計:{}\n",
-            bump, cleared_line, hole_count, sum_of_height
-        );
-        let mut temp = String::new();
-        //   getch(true).unwrap();
-        let mut tempstr = String::new();
-        io::stdin().read_line(&mut tempstr).unwrap();
-
+        /*
+               draw::print_debug(field, mino, 0, eval);
+               println!(
+                   "\nでこぼこ:{}\n消去ライン:{}\n穴:{}\n高さ合計:{}\n",
+                   bump, cleared_line, hole_count, sum_of_height
+               );
+               let mut temp = String::new();
+               //   getch(true).unwrap();
+               let mut tempstr = String::new();
+               io::stdin().read_line(&mut tempstr).unwrap();
+        */
         /*
         println!("高さ合計:{}\n消去ライン:{}\n穴:{}\nでこぼこ:{}\n穴に高さ合計2乗:{}\nでこぼこに高さ合計2乗:{}",
             (weight[0] * sum_of_height as f64)
