@@ -148,8 +148,13 @@ impl BeemSearch {
         init();
 
         let mut mino = Environment::create_mino_1(processdata.current);
-        let debug_value = processdata.first_move;
+        // let debug_value = processdata.first_move;
 
+        /*       println!(
+                   "eval={}\nfirstmove={}",
+                   processdata.before_eval, processdata.first_move
+               );
+        */
         Self::search(
             &mut mino,
             &processdata.field,
@@ -225,7 +230,7 @@ impl BeemSearch {
                     first = processdata.first_move;
                 }
 
-                //   println!("eval={}\nfirstmove={}", eval, firstmove);
+                //  println!("eval={}\nfirstmove={}", eval, firstmove);
                 // let mut ss = String::new();
                 // io::stdin().read_line(&mut ss).unwrap();
 
@@ -253,24 +258,27 @@ impl BeemSearch {
                     }
                 }
 
-                VEC_FIELD.with(|value| {
-                    let process_data;
+                SEARCHED_DATA_VEC.with(|searched_data_vec| {
+                    VEC_FIELD.with(|vec_field| {
+                        let process_data;
 
-                    process_data = ProcessData {
-                        current: new_current as i8,
-                        next: new_next,
-                        next_count: processdata.next_count - 1,
-                        hold: processdata.hold,
-                        can_hold: processdata.can_hold,
-                        field: value.borrow()[beem],
-                        before_eval: eval,
-                        first_move: first,
-                    };
+                        process_data = ProcessData {
+                            current: new_current as i8,
+                            next: new_next,
+                            next_count: processdata.next_count - 1,
+                            hold: processdata.hold,
+                            can_hold: processdata.can_hold,
+                            field: vec_field.borrow()
+                                [searched_data_vec.borrow()[beem].field_index as usize],
+                            before_eval: eval,
+                            first_move: first,
+                        };
 
-                    counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                    {
-                        queue.lock().unwrap().push(process_data);
-                    }
+                        counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                        {
+                            queue.lock().unwrap().push(process_data);
+                        }
+                    });
                 });
             }
         }
@@ -337,9 +345,10 @@ impl BeemSearch {
 
         //ハードドロップ
         {
-            if move_value == 11122 {
+            /*
+            if move_value == 112 || move_value == 13 {
                 println!();
-            }
+            } */
 
             let mut new_move_diff = Action::HARD_DROP as i64;
             for _i in 0..move_count {
@@ -363,8 +372,8 @@ impl BeemSearch {
                 Self::get_hash_for_position(newmino.mino_kind, newmino.rotation, &newmino.position);
 
             SEARCHED_DATA.with(|value| {
-                let mut mutvalue = value.borrow_mut();
-                if let Some(result) = mutvalue.get_mut(&hash) {
+                let mut searched_data = value.borrow_mut();
+                if let Some(result) = searched_data.get_mut(&hash) {
                     if result.move_count > move_count {
                         result.move_count = move_count;
                         result.move_value = move_value + new_move_diff;
@@ -388,12 +397,12 @@ impl BeemSearch {
                     pattern.eval =
                         Evaluation::evaluate(&field_clone, &newmino, cleared_line) + before_eval;
 
-                    VEC_FIELD.with(|value| {
-                        value.borrow_mut().push(field_clone);
-                        pattern.field_index = value.borrow().len() as i32 - 1;
+                    VEC_FIELD.with(|vec_field| {
+                        vec_field.borrow_mut().push(field_clone);
+                        pattern.field_index = vec_field.borrow().len() as i32 - 1;
                     });
 
-                    mutvalue.insert(hash, pattern);
+                    searched_data.insert(hash, pattern);
                 }
             });
         }
@@ -578,8 +587,9 @@ impl BeemSearch {
                 _ => panic!("a"),
             },
             MinoKind::S => match rotation {
-                Rotation::RIGHT | Rotation::LEFT => Self::change_hash_order(position, 2301),
+                Rotation::RIGHT => Self::change_hash_order(position, 2301),
                 Rotation::TURN => Self::change_hash_order(position, 3210),
+                Rotation::LEFT => Self::change_hash_order(position, 1032),
                 _ => panic!("a"),
             },
             MinoKind::Z => match rotation {
@@ -609,7 +619,7 @@ impl BeemSearch {
         }
     }
 
-    fn change_hash_order(hashcode: &i64, order: i32) -> i64 {
+    pub fn change_hash_order(hashcode: &i64, order: i32) -> i64 {
         let mut result = 0;
         for i in 0..4 {
             let mut temphash = *hashcode;

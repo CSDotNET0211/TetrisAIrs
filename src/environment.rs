@@ -631,9 +631,9 @@ impl Environment {
     }
 
     pub fn init(&mut self) {
-        /*  for _i in 0..self.next.len() {
+        for _i in 0..self.next.len() {
             self.refresh_next();
-        } */
+        }
         self.create_mino(-1);
     }
 

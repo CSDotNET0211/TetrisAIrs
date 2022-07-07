@@ -6,6 +6,7 @@ mod geneticalgorithm;
 mod grobaldata;
 mod threadpool;
 
+use beemsearch::BeemSearch;
 use draw::print;
 use environment::{Action, Environment};
 use evaluation::Evaluation;
@@ -17,7 +18,6 @@ use std::{
     sync::Mutex,
     thread, time,
 };
-
 use threadpool::ThreadPool;
 
 use crate::environment::MinoKind;
@@ -44,12 +44,12 @@ fn main() {
     );
 
     let mut environment = Environment::new();
-    environment.next = [MinoKind::T, 5, 5, 5, 5];
+    //   environment.next = [MinoKind::T, 5, 5, 5, 5];
     environment.init();
     //    geneticalgorithm::bench_mark_test();
 
     // environment.now_mino.mino_kind = 4;
-    environment.field = [false; 260];
+    /*     environment.field = [false; 260];
     for i in 0..40 {
         environment.field[i] = true;
     }
@@ -61,7 +61,7 @@ fn main() {
     environment.field[30] = false;
     environment.field[31] = false;
     environment.field[32] = false;
-    environment.field[21] = false;
+    environment.field[21] = false;*/
 
     println!("何かキーを入力して検索を開始");
     //   let key = getch(true).unwrap();
@@ -77,7 +77,7 @@ fn main() {
         print(&environment.get_field_ref(), &environment.now_mino);
 
         //   getch(true).unwrap();
-        thread::sleep_ms(1000);
+        //   thread::sleep_ms(1000);
         //io::stdin().read_line(&mut buf).unwrap();
 
         let mut result = environment.search();
