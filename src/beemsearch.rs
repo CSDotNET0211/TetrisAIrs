@@ -113,7 +113,7 @@ impl BeemSearch {
                 temp
             };
         }
-        println!("{}", next_int);
+        //   println!("{}", next_int);
 
         let data = ProcessData {
             current: current,
