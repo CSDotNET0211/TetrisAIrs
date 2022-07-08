@@ -3,14 +3,12 @@ mod draw;
 mod environment;
 mod evaluation;
 mod geneticalgorithm;
-mod grobaldata;
 mod threadpool;
 
 use beemsearch::BeemSearch;
 use draw::print;
 use environment::{Action, Environment};
 use evaluation::Evaluation;
-use grobaldata::GrobalData;
 use num_cpus;
 use once_cell::sync::OnceCell;
 use std::time::{Duration, Instant};
@@ -29,7 +27,7 @@ pub static THREAD_POOL: OnceCell<Mutex<ThreadPool>> = OnceCell::new();
 fn main() {
     assert!(
         THREAD_POOL
-            .set(Mutex::new(ThreadPool::new(num_cpus::get())))
+            .set(Mutex::new(ThreadPool::new(num_cpus::get() + 10)))
             .is_ok(),
         "スレッドプールの初期化失敗"
     );
@@ -53,13 +51,23 @@ fn main() {
     let mut timer;
     let mut elapsed_time = 0;
     loop {
-        
-        print(&environment.get_field_ref(), &environment.now_mino);
-        
+        print(
+            &environment.get_field_ref(),
+            &environment.now_mino,
+            elapsed_time,
+        );
+
         timer = Instant::now();
+
         let mut result = environment.search();
-        timer.elapsed().
-        
+
+        //    getch(false).unwrap();
+
+        elapsed_time += timer.elapsed().as_millis();
+        if elapsed_time != 0 {
+            elapsed_time /= 2;
+        }
+
         let count = degit(result);
 
         for _i in 0..count {

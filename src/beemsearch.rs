@@ -1,14 +1,9 @@
-use crate::draw;
-use crate::draw::*;
 use crate::environment::*;
 use crate::evaluation::*;
-use crate::threadpool::ThreadPool;
 use crate::THREAD_POOL;
 use std::cell::RefCell;
-use std::collections::hash_set;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::io;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -25,33 +20,7 @@ struct ProcessData {
     before_eval: f64,
 }
 
-impl ProcessData {
-    pub const fn new() -> Self {
-        ProcessData {
-            current: -1,
-            next: -1,
-            next_count: -1,
-            hold: -1,
-            can_hold: false,
-            field: [false; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
-            first_move: -1,
-            before_eval: -1.0,
-        }
-    }
-
-    pub fn clone(&self) -> Self {
-        ProcessData {
-            current: self.current,
-            next: self.next,
-            next_count: self.next_count,
-            hold: self.hold,
-            can_hold: self.can_hold,
-            field: self.field,
-            first_move: self.first_move,
-            before_eval: self.before_eval,
-        }
-    }
-}
+impl ProcessData {}
 
 #[derive(Clone, Copy)]
 ///検索データ
@@ -137,6 +106,7 @@ impl BeemSearch {
         Self::get_loop(queue, counter)
     }
 
+    #[inline(always)]
     ///スレッド別に処理データを渡して処理する関数
     fn proceed_task(
         processdata: &ProcessData,
@@ -284,7 +254,7 @@ impl BeemSearch {
         }
 
         counter.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
-
+        #[inline(always)]
         fn init() {
             PASSED_TREE_ROUTE_SET.with(|value| value.borrow_mut().clear());
             VEC_FIELD.with(|value| value.borrow_mut().clear());
@@ -307,6 +277,10 @@ impl BeemSearch {
 
         loop {
             let data = queue.lock().unwrap().pop();
+            //    let queue_count = queue.lock().unwrap().len();
+            //     queue.lock().unwrap().truncate(queue_count - 5);
+            //     let test = queue.lock().unwrap();
+            //test.pop();
 
             match data {
                 Some(result) => {
@@ -326,7 +300,29 @@ impl BeemSearch {
         }
     }
 
-    fn get_loop_multiply() {}
+    fn get_loop_multiply(queue: Vec<ProcessData>) {
+        /*    for _i in queue.len() {
+            let data = queue.pop().unwrap();
+
+
+
+            match data {
+                Some(result) => {
+                    let counter = Arc::clone(&counter);
+                    let best = Arc::clone(&best);
+                    let queue = Arc::clone(&queue);
+                    thread_pool.execute(move || {
+                        Self::proceed_task(&result, counter, queue, best);
+                    });
+                }
+                None => {
+                    if counter.load(std::sync::atomic::Ordering::SeqCst) == 0 {
+                        return best.lock().unwrap().move_value;
+                    }
+                }
+            }
+        } */
+    }
 
     //再帰で設置パターン列挙
     fn search(

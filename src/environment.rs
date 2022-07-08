@@ -112,6 +112,7 @@ impl Mino {
         self.rotation = Rotation::ZERO;
     }
 
+    #[inline(always)]
     pub fn move_pos(&mut self, x: i32, y: i32) {
         if x != i32::MAX {
             for i in 0..4 {
@@ -182,6 +183,7 @@ impl Mino {
         }
     }
 
+    #[inline(always)]
     fn add_position(array: &mut i64, mut value: i64, mut index: u32, is_x: bool) {
         if index == u32::MAX {
             index = 0;
@@ -199,6 +201,7 @@ impl Mino {
         *array += value;
     }
 
+    #[inline(always)]
     pub fn add_position_xy(array: &mut i64, x: i32, y: i32) {
         let value = y + (x * 100);
         let mut temp = value as i64;
@@ -212,6 +215,7 @@ impl Mino {
         }
     }
 
+    #[inline(always)]
     pub fn get_position(&self, mut index: i32, is_x: bool) -> i32 {
         if index == i32::MAX {
             index = 0;
@@ -232,6 +236,7 @@ impl Mino {
         }
     }
 
+    #[inline(always)]
     pub fn get_position_from_value(mut value: i64, mut index: i32, is_x: bool) -> i32 {
         if index == i32::MAX {
             index = 0;
@@ -239,7 +244,7 @@ impl Mino {
             index = 4 - index - 1;
         }
 
-        for i in 0..index {
+        for _i in 0..index {
             value /= 10000;
         }
         value %= 10000;
@@ -540,8 +545,6 @@ impl Environment {
         )
     }
 
-    pub fn print_game() {}
-
     pub fn user_input(&mut self, action: i8) {
         let mut srs: Vector2 = Vector2 { x: 0, y: 0 };
 
@@ -672,6 +675,7 @@ impl Environment {
         self.create_mino(-1);
     }
 
+    #[inline(always)]
     pub fn check_valid_pos(
         field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
         mino: &Mino,
@@ -767,10 +771,6 @@ impl Environment {
                 }
             }
         }
-    }
-
-    pub fn get_eval(_values: &[f32]) -> f32 {
-        0.0
     }
 
     pub fn create_mino_1(mino: i8) -> Mino {

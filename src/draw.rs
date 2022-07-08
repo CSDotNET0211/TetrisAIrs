@@ -1,16 +1,16 @@
-use crate::environment::{self, Environment, Mino, Vector2};
+use crate::environment::{Environment, Mino, Vector2};
 use crossterm::{
     cursor::{self, DisableBlinking, Hide},
     execute, queue,
-    style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
-    terminal::{self, enable_raw_mode, is_raw_mode_enabled, Clear, ClearType},
+    style::{Color, Print, ResetColor, SetForegroundColor},
 };
-use std::{
-    fmt::write,
-    io::{stdout, Write},
-};
+use std::io::{stdout, Write};
 
-pub fn print(field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH], mino: &Mino) {
+pub fn print(
+    field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
+    mino: &Mino,
+    time: u128,
+) {
     //    enable_raw_mode().unwrap();
 
     let mut stdout = stdout();
@@ -38,6 +38,8 @@ pub fn print(field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH
 
         y -= 1;
     }
+
+    queue!(stdout, Print(time)).unwrap();
 
     let mut quickdrop_value = 0;
 
@@ -103,7 +105,8 @@ pub fn print(field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH
     stdout.flush().unwrap();
 }
 
-pub fn print_debug(field: &[bool], mino: &Mino, move_value: i64, eval: f64) {
+#[allow(dead_code)]
+pub fn print_debug(field: &[bool], _mino: &Mino, _move_valuee: i64, eval: f64) {
     let mut stdout = stdout();
 
     execute!(stdout, Hide, DisableBlinking, cursor::MoveTo(0, 0)).unwrap();
@@ -142,5 +145,3 @@ pub fn print_debug(field: &[bool], mino: &Mino, move_value: i64, eval: f64) {
         queue!(stdout, Print("■"));
     } */
 }
-
-fn get_mino_form(minokind: i8) {}

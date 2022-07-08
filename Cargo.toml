@@ -11,7 +11,6 @@ edition = "2021"
 num = "*"
 rand = "0.8.5"
 console = "0.15.0"
-# winconsole = "0.11.1"
 rawkey = "*"
 crossterm = "*"
 num_cpus="*"
@@ -22,3 +21,6 @@ libm = "*"
 [dependencies.winconsole]
 version = "0.11.1"
 features = ["input", "serde", "window"]
+
+[profile.release]
+debug = true
