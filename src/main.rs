@@ -13,6 +13,7 @@ use evaluation::Evaluation;
 use grobaldata::GrobalData;
 use num_cpus;
 use once_cell::sync::OnceCell;
+use std::time::{Duration, Instant};
 use std::{
     io::{self, Read},
     sync::Mutex,
@@ -28,7 +29,7 @@ pub static THREAD_POOL: OnceCell<Mutex<ThreadPool>> = OnceCell::new();
 fn main() {
     assert!(
         THREAD_POOL
-            .set(Mutex::new(ThreadPool::new(1 /*num_cpus::get() */)))
+            .set(Mutex::new(ThreadPool::new(num_cpus::get())))
             .is_ok(),
         "スレッドプールの初期化失敗"
     );
@@ -44,44 +45,21 @@ fn main() {
     );
 
     let mut environment = Environment::new();
-    //   environment.next = [MinoKind::T, 5, 5, 5, 5];
     environment.init();
-    //    geneticalgorithm::bench_mark_test();
-
-    // environment.now_mino.mino_kind = 4;
-    /*     environment.field = [false; 260];
-    for i in 0..40 {
-        environment.field[i] = true;
-    }
-    environment.field[3] = false;
-    environment.field[13] = false;
-    environment.field[23] = false;
-    environment.field[33] = false;
-
-    environment.field[30] = false;
-    environment.field[31] = false;
-    environment.field[32] = false;
-    environment.field[21] = false;*/
 
     println!("何かキーを入力して検索を開始");
-    //   let key = getch(true).unwrap();
     let mut buf = String::new();
-    //    io::stdin().read_line(&mut buf).unwrap();
 
-    let sleeptime = time::Duration::from_millis(30);
-    let frame_time = time::Duration::from_millis(1000 / 30);
-    let mut GrobalData = GrobalData::new(num_cpus::get() as u32);
-
+    let mut timer;
+    let mut elapsed_time = 0;
     loop {
-        //  console::clear().unwrap();
+        
         print(&environment.get_field_ref(), &environment.now_mino);
-
-        //   getch(true).unwrap();
-        //   thread::sleep_ms(1000);
-        //io::stdin().read_line(&mut buf).unwrap();
-
+        
+        timer = Instant::now();
         let mut result = environment.search();
-        //println!("{}", result);
+        timer.elapsed().
+        
         let count = degit(result);
 
         for _i in 0..count {
