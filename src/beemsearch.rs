@@ -100,7 +100,7 @@ impl BeemSearch {
         next_count: i8,
     ) -> i64 {
         let counter = Arc::new(AtomicUsize::new(0));
-        let next_count = 1;
+        //let next_count = 1;
 
         //vec![1,2,3,4] -> 1234
         let mut next_int = 0;
@@ -325,6 +325,8 @@ impl BeemSearch {
             }
         }
     }
+
+    fn get_loop_multiply() {}
 
     //再帰で設置パターン列挙
     fn search(
