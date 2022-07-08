@@ -1,7 +1,5 @@
 use std::{cell::RefCell, io};
 
-use winconsole::console::getch;
-
 use crate::{
     draw,
     environment::{Environment, Mino},

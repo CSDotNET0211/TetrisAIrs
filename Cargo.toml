@@ -10,17 +10,12 @@ edition = "2021"
 [dependencies]
 num = "*"
 rand = "0.8.5"
-console = "0.15.0"
-rawkey = "*"
 crossterm = "*"
 num_cpus="*"
 thread-id = "*"
 once_cell = "*"
 libm = "*"
 
-[dependencies.winconsole]
-version = "0.11.1"
-features = ["input", "serde", "window"]
 
 [profile.release]
 debug = true
