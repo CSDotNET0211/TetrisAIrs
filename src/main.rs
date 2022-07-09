@@ -27,7 +27,7 @@ pub static THREAD_POOL: OnceCell<Mutex<ThreadPool>> = OnceCell::new();
 fn main() {
     assert!(
         THREAD_POOL
-            .set(Mutex::new(ThreadPool::new(num_cpus::get() + 10)))
+            .set(Mutex::new(ThreadPool::new(num_cpus::get())))
             .is_ok(),
         "スレッドプールの初期化失敗"
     );
