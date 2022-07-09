@@ -71,7 +71,7 @@ impl BeemSearch {
         next_count: i8,
     ) -> i64 {
         let counter = Arc::new(AtomicUsize::new(0));
-        //let next_count = 1;
+        //let next_count = 4;
 
         //vec![1,2,3,4] -> 1234
         let mut next_int = 0;
@@ -84,7 +84,6 @@ impl BeemSearch {
                 temp
             };
         }
-        //   println!("{}", next_int);
 
         let data = ProcessData {
             current: current,
@@ -375,8 +374,9 @@ impl BeemSearch {
                     let mut field_clone = field.clone();
 
                     for i in 0..4 {
-                        let x = Mino::get_position_from_value(newmino.position, i, true);
-                        let y = Mino::get_position_from_value(newmino.position, i, false);
+                        let mut x = 0;
+                        let mut y = 0;
+                        Mino::get_position_from_value(newmino.position, i, &mut x, &mut y);
 
                         field_clone[(x + y * 10) as usize] = true;
                     }

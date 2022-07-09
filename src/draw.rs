@@ -63,8 +63,12 @@ pub fn print(
     }
 
     for _i in 0..4 as i32 {
-        let x = mino.get_position(_i, true);
-        let y = mino.get_position(_i, false) + quickdrop_value;
+        let mut x = 0;
+        let mut y = 0;
+
+        mino.get_position(_i, &mut x, &mut y);
+        y += quickdrop_value;
+
         queue!(
             stdout,
             cursor::MoveTo(
@@ -84,8 +88,10 @@ pub fn print(
     }
 
     for _i in 0..4 as i32 {
-        let x = mino.get_position(_i, true);
-        let y = mino.get_position(_i, false);
+        let mut x = 0;
+        let mut y = 0;
+
+        mino.get_position(_i, &mut x, &mut y);
         queue!(
             stdout,
             cursor::MoveTo(

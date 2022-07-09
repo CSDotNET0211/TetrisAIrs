@@ -203,7 +203,7 @@ impl Mino {
 
     ///xまたはyの位置を取得
     #[inline(always)]
-    pub fn get_position(&self, mut index: i32, is_x: bool) -> i32 {
+    pub fn get_position(&self, mut index: i32, x: &mut i32, y: &mut i32) {
         if index == i32::MAX {
             index = 0;
         } else {
@@ -216,16 +216,13 @@ impl Mino {
         }
         value %= 10000;
 
-        if is_x {
-            value as i32 / 100
-        } else {
-            value as i32 % 100
-        }
+        *x = value as i32 / 100;
+        *y = value as i32 % 100;
     }
 
     ///引数の値から位置を取得
     #[inline(always)]
-    pub fn get_position_from_value(mut value: i64, mut index: i32, is_x: bool) -> i32 {
+    pub fn get_position_from_value(mut value: i64, mut index: i32, x: &mut i32, y: &mut i32) {
         if index == i32::MAX {
             index = 0;
         } else {
@@ -237,11 +234,8 @@ impl Mino {
         }
         value %= 10000;
 
-        if is_x {
-            value as i32 / 100
-        } else {
-            value as i32 % 100
-        }
+        *x = value as i32 / 100;
+        *y = value as i32 % 100;
     }
 }
 
@@ -480,10 +474,11 @@ impl Environment {
             .init(Self::get_default_mino_pos(&self.now_mino.mino_kind));
 
         for i in 0..4 {
-            let x = self.now_mino.get_position(i, true) as usize;
-            let y = self.now_mino.get_position(i, false) as usize;
+            let mut x = 0;
+            let mut y = 0;
+            self.now_mino.get_position(i, &mut x, &mut y);
 
-            if self.field[x + y * 10] {
+            if self.field[(x + y) as usize * 10] {
                 self.dead_flag = true;
                 break;
             }
@@ -652,8 +647,9 @@ impl Environment {
         self.can_hold = true;
 
         for i in 0..4 {
-            let x = self.now_mino.get_position(i, true);
-            let y = self.now_mino.get_position(i, false);
+            let mut x = 0;
+            let mut y = 0;
+            self.now_mino.get_position(i, &mut x, &mut y);
 
             self.field[(x + y * 10) as usize] = true;
         }
@@ -683,8 +679,11 @@ impl Environment {
         add: i32,
     ) -> bool {
         for i in 0..4 {
-            let x = mino.get_position(i, true) + add;
-            let y = mino.get_position(i, false) + add;
+            let mut x = 0;
+            let mut y = 0;
+            mino.get_position(i, &mut x, &mut y);
+            x += add;
+            y += add;
 
             if !(x + try_move.x < Environment::FIELD_WIDTH as i32
                 && x + try_move.x >= 0
