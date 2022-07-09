@@ -1,3 +1,5 @@
+//! 盤面評価
+
 use std::{cell::RefCell, io};
 
 use crate::{
@@ -17,9 +19,6 @@ impl Evaluation {
     pub const WEIGHT_COUNT: i32 = 9;
 
     pub fn evaluate(field: &[bool], mino: &Mino, cleared_line: i32) -> f64 {
-        //   HEIGHTS_WITHOUT_IDO.with(|value| value.borrow_mut().clear());
-        //ROW_HEIGHT.with(|value|{value.borrow_mut().cle})
-
         let cleared_value;
         let weight = WEIGHT.get().unwrap();
 

@@ -1,3 +1,5 @@
+//! テトリスシミュレート環境
+
 use core::panic;
 use rand::prelude::*;
 
@@ -58,7 +60,7 @@ impl MinoKind {
     pub const T: i8 = 6;
 }
 
-pub struct Rotation {}
+pub struct Rotation;
 
 impl Rotation {
     pub const ZERO: i8 = 0;
@@ -67,7 +69,7 @@ impl Rotation {
     pub const LEFT: i8 = 3;
 }
 
-pub struct Action {}
+pub struct Action;
 
 impl Action {
     pub const MOVE_RIGHT: i8 = 0;
@@ -80,7 +82,7 @@ impl Action {
     pub const NULL: i8 = 7;
 }
 
-pub struct Rotate {}
+pub struct Rotate;
 impl Rotate {
     pub const RIGHT: i8 = 0;
     pub const LEFT: i8 = 1;
@@ -112,21 +114,15 @@ impl Mino {
         self.rotation = Rotation::ZERO;
     }
 
+    ///位置を移動
     #[inline(always)]
     pub fn move_pos(&mut self, x: i32, y: i32) {
-        if x != i32::MAX {
-            for i in 0..4 {
-                Self::add_position(&mut self.position, x.into(), i, true);
-            }
-        }
-
-        if y != i32::MAX {
-            for i in 0..4 {
-                Self::add_position(&mut self.position, y.into(), i, false);
-            }
+        for i in 0..4 {
+            Self::add_position(&mut self.position, x, y, i);
         }
     }
 
+    ///SRS専用の位置移動
     pub fn move_for_srs(&mut self, srstest: &[[Vector2; 4]; 4], rotate: i8, rotation: i8) {
         if rotate == Rotate::RIGHT {
             let value = rotation;
@@ -134,15 +130,9 @@ impl Mino {
             for i in 0..4 {
                 Self::add_position(
                     &mut self.position,
-                    srstest[value as usize][i].x as i64,
-                    i as u32,
-                    true,
-                );
-                Self::add_position(
-                    &mut self.position,
-                    srstest[value as usize][i].y as i64,
-                    i as u32,
-                    false,
+                    srstest[value as usize][i].x,
+                    srstest[value as usize][i].y,
+                    i,
                 );
             }
         } else {
@@ -151,15 +141,9 @@ impl Mino {
             for i in 0..4 {
                 Self::add_position(
                     &mut self.position,
-                    -srstest[value][i].x as i64,
-                    i as u32,
-                    true,
-                );
-                Self::add_position(
-                    &mut self.position,
-                    -srstest[value][i].y as i64,
-                    i as u32,
-                    false,
+                    -srstest[value][i].x,
+                    -srstest[value][i].y,
+                    i,
                 );
             }
         }
@@ -183,24 +167,26 @@ impl Mino {
         }
     }
 
+    ///x,yそれぞれの位置を追加
     #[inline(always)]
-    fn add_position(array: &mut i64, mut value: i64, mut index: u32, is_x: bool) {
-        if index == u32::MAX {
+    fn add_position(position: &mut i64, x: i32, y: i32, mut index: usize) {
+        if index == usize::MAX {
             index = 0;
         } else {
             index = 4 - index - 1;
         }
 
-        for _i in 0..4 * index {
-            value *= 10;
-        }
-        if is_x {
-            value *= 100;
+        let mut add_value = y as i64;
+        add_value += x as i64 * 100;
+
+        for _i in 0..index {
+            add_value *= 10000;
         }
 
-        *array += value;
+        *position += add_value;
     }
 
+    ///x,yをまとめて追加
     #[inline(always)]
     pub fn add_position_xy(array: &mut i64, x: i32, y: i32) {
         let value = y + (x * 100);
@@ -215,6 +201,7 @@ impl Mino {
         }
     }
 
+    ///xまたはyの位置を取得
     #[inline(always)]
     pub fn get_position(&self, mut index: i32, is_x: bool) -> i32 {
         if index == i32::MAX {
@@ -236,6 +223,7 @@ impl Mino {
         }
     }
 
+    ///引数の値から位置を取得
     #[inline(always)]
     pub fn get_position_from_value(mut value: i64, mut index: i32, is_x: bool) -> i32 {
         if index == i32::MAX {
@@ -478,6 +466,7 @@ impl Environment {
         ],
     ];
 
+    ///ミノ情報を作成して環境を更新する
     pub fn create_mino(&mut self, mino: i8) {
         self.now_mino = Mino::new();
 
@@ -501,10 +490,12 @@ impl Environment {
         }
     }
 
+    ///フィールドの参照取得（フィールドをprivateにしといて
     pub fn get_field_ref(&self) -> &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH] {
         &self.field
     }
 
+    ///ミノの出現位置を取得
     fn get_default_mino_pos(kind: &i8) -> i64 {
         match *kind as i8 {
             MinoKind::I => 0318041805180618,
@@ -518,6 +509,7 @@ impl Environment {
         }
     }
 
+    ///ネクストを更新する
     fn refresh_next(&mut self) {
         for i in 0..self.next.len() - 1 {
             self.next[i] = self.next[i + 1];
@@ -534,6 +526,7 @@ impl Environment {
         self.next[self.next.len() - 1] = mino;
     }
 
+    ///現在の手で最善なものを選択
     pub fn search(&self) -> i64 {
         BeemSearch::get_best_move(
             self.now_mino.mino_kind,
@@ -545,6 +538,7 @@ impl Environment {
         )
     }
 
+    ///操作を入力
     pub fn user_input(&mut self, action: i8) {
         let mut srs: Vector2 = Vector2 { x: 0, y: 0 };
 
@@ -604,6 +598,7 @@ impl Environment {
         }
     }
 
+    ///ホールド
     fn hold(&mut self) {
         if self.can_hold {
             self.can_hold = false;
@@ -618,6 +613,8 @@ impl Environment {
             }
         }
     }
+
+    ///環境を生成
     pub fn new() -> Self {
         Environment {
             next_bag: (0..7).collect(),
@@ -633,6 +630,7 @@ impl Environment {
         }
     }
 
+    ///環境を初期化、new()を併せて使う
     pub fn init(&mut self) {
         for _i in 0..self.next.len() {
             self.refresh_next();
@@ -640,6 +638,7 @@ impl Environment {
         self.create_mino(-1);
     }
 
+    ///ハードドロップ
     fn set_mino(&mut self) {
         loop {
             if Self::check_valid_pos(&self.field, &self.now_mino, &Vector2::MY1, 0) {
@@ -675,6 +674,7 @@ impl Environment {
         self.create_mino(-1);
     }
 
+    ///移動後の位置が適切かどうか
     #[inline(always)]
     pub fn check_valid_pos(
         field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
@@ -698,6 +698,7 @@ impl Environment {
         true
     }
 
+    ///ライン消去できるか判断、出来ればフィールド更新してライン消去数を返す
     pub fn check_and_clear_line(
         field: &mut [bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
     ) -> i32 {
@@ -732,6 +733,7 @@ impl Environment {
         value_count
     }
 
+    ///フィールドの消去した部分を下げる
     fn down_line(
         mut value: i32,
         mut value_count: i32,
@@ -773,6 +775,7 @@ impl Environment {
         }
     }
 
+    ///ミノを生成する・環境とは独立
     pub fn create_mino_1(mino: i8) -> Mino {
         Mino {
             mino_kind: mino,
@@ -781,6 +784,7 @@ impl Environment {
         }
     }
 
+    ///回転を試みる　ミノ情報は変更しないが一時的に変える都合上可変参照
     pub fn try_rotate(
         rotate: i8,
         field: &[bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
@@ -857,6 +861,7 @@ impl Environment {
         }
     }
 
+    ///その場で強制回転
     pub fn simple_rotate(rotate: i8, mino: &mut Mino, addtemp: i32) {
         let move_pos;
         mino.move_pos(addtemp, addtemp);

@@ -1,3 +1,5 @@
+//! コンソール出力用
+
 use crate::environment::{Environment, Mino, Vector2};
 use crossterm::{
     cursor::{self, DisableBlinking, Hide},

@@ -1,3 +1,5 @@
+//! 実数値遺伝アルゴリズム
+
 use rand::{prelude::ThreadRng, *};
 
 struct Indivisual {

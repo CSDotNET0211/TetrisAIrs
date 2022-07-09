@@ -1,5 +1,4 @@
-//! cargo docテスト
-//! # aiueo
+//! スレッドプール
 
 use std::sync::mpsc;
 use std::sync::Arc;

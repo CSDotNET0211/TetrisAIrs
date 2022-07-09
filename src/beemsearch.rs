@@ -1,3 +1,5 @@
+//! ビームサーチ
+
 use crate::environment::*;
 use crate::evaluation::*;
 use crate::THREAD_POOL;
@@ -114,17 +116,10 @@ impl BeemSearch {
         queue: Arc<Mutex<Vec<ProcessData>>>,
         best: Arc<Mutex<SearchedPattern>>,
     ) {
-        //     searched_data::with(|value| {});
         init();
 
         let mut mino = Environment::create_mino_1(processdata.current);
-        // let debug_value = processdata.first_move;
 
-        /*       println!(
-                   "eval={}\nfirstmove={}",
-                   processdata.before_eval, processdata.first_move
-               );
-        */
         Self::search(
             &mut mino,
             &processdata.field,
@@ -136,19 +131,20 @@ impl BeemSearch {
             false,
         );
 
-        SEARCHED_DATA.with(|value| {
-            SEARCHED_DATA_VEC.with(|vec| {
-                vec.borrow_mut().extend(value.borrow().values().into_iter());
-            })
-        });
-
         let mut beem_width = 0;
 
-        SEARCHED_DATA_VEC.with(|vec| {
-            if vec.borrow().len() <= 10 {
-                beem_width = vec.borrow().len();
+        SEARCHED_DATA_VEC.with(|searched_data_vec| {
+            SEARCHED_DATA.with(|searched_data| {
+                searched_data_vec
+                    .borrow_mut()
+                    .extend(searched_data.borrow().values().into_iter());
+            });
+
+            if searched_data_vec.borrow().len() <= 10 {
+                beem_width = searched_data_vec.borrow().len();
             } else {
-                vec.borrow_mut()
+                searched_data_vec
+                    .borrow_mut()
                     .sort_by(|a, b| b.eval.partial_cmp(&a.eval).unwrap());
                 beem_width = 10;
             }
@@ -200,10 +196,6 @@ impl BeemSearch {
                     first = processdata.first_move;
                 }
 
-                //  println!("eval={}\nfirstmove={}", eval, firstmove);
-                // let mut ss = String::new();
-                // io::stdin().read_line(&mut ss).unwrap();
-
                 let mut new_current = processdata.next;
                 let mut new_next = processdata.next;
                 let beforenext = new_next;
@@ -254,6 +246,7 @@ impl BeemSearch {
         }
 
         counter.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+
         #[inline(always)]
         fn init() {
             PASSED_TREE_ROUTE_SET.with(|value| value.borrow_mut().clear());
@@ -262,6 +255,7 @@ impl BeemSearch {
             SEARCHED_DATA_VEC.with(|value| value.borrow_mut().clear());
         }
 
+        #[inline(always)]
         fn update_if_better(best: &mut SearchedPattern, test: &SearchedPattern, move_value: i64) {
             if best.position == -1 || test.eval > best.eval {
                 *best = *test;
@@ -277,10 +271,6 @@ impl BeemSearch {
 
         loop {
             let data = queue.lock().unwrap().pop();
-            //    let queue_count = queue.lock().unwrap().len();
-            //     queue.lock().unwrap().truncate(queue_count - 5);
-            //     let test = queue.lock().unwrap();
-            //test.pop();
 
             match data {
                 Some(result) => {
@@ -549,6 +539,7 @@ impl BeemSearch {
         }
     }
 
+    ///過去の位置を記録、参照
     fn is_passed_before(
         kind: i8,
         mut pos: i64,
@@ -572,6 +563,7 @@ impl BeemSearch {
         result
     }
 
+    ///位置情報を回転情報関係なく均一にする
     fn get_hash_for_position(kind: i8, rotation: i8, position: &i64) -> i64 {
         if rotation == Rotation::ZERO {
             return *position;
@@ -617,6 +609,7 @@ impl BeemSearch {
         }
     }
 
+    ///位置情報を指定された順番に書き換える
     pub fn change_hash_order(hashcode: &i64, order: i32) -> i64 {
         let mut result = 0;
         for i in 0..4 {
