@@ -8,7 +8,7 @@ use crate::{
     WEIGHT,
 };
 
-pub struct Evaluation {}
+pub struct Evaluation;
 
 thread_local! {
     static ROW_HEIGHT:RefCell<[i32;Environment::FIELD_WIDTH]>={let m=[0;Environment::FIELD_WIDTH]; RefCell::new(m)};
