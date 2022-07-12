@@ -9,6 +9,7 @@ use beemsearch::BeemSearch;
 use draw::print;
 use environment::{Action, Environment};
 use evaluation::Evaluation;
+use geneticalgorithm::GeneticAlgorithm;
 use num_cpus;
 use once_cell::sync::OnceCell;
 use std::time::{Duration, Instant};
@@ -25,6 +26,8 @@ pub static THREAD_POOL: OnceCell<Mutex<ThreadPool>> = OnceCell::new();
 
 //デバッグ用でスレッド数変えてる
 fn main() {
+    GeneticAlgorithm::bench_mark_test();
+
     assert!(
         THREAD_POOL
             .set(Mutex::new(ThreadPool::new(num_cpus::get())))
