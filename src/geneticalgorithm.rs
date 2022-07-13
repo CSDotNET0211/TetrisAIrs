@@ -11,8 +11,8 @@ use rand::{prelude::ThreadRng, *};
 use crate::evaluation::Evaluation;
 #[derive(Copy, Clone)]
 struct Indivisual {
-    values: [f64; Evaluation::WEIGHT_COUNT as usize],
-    evaluation: f64,
+    pub values: [f64; Evaluation::WEIGHT_COUNT as usize],
+    pub evaluation: f64,
 }
 
 impl Indivisual {
@@ -34,10 +34,10 @@ impl GeneticAlgorithm {
 
         for _i in 0..50 {
             let param = [
-                Self::get_random(-5.12, 5.12, &mut random),
-                0.0,
-                0.0,
-                0.0,
+                Self::get_random(-5.12, -2.12, &mut random),
+                Self::get_random(-5.12, -2.12, &mut random),
+                Self::get_random(-5.12, -2.12, &mut random),
+                Self::get_random(-5.12, -2.12, &mut random),
                 0.0,
                 0.0,
                 0.0,
@@ -45,19 +45,30 @@ impl GeneticAlgorithm {
                 0.0,
             ];
             indivisuals.push(Indivisual {
-                evaluation: Self::Function(param[0]),
+                evaluation: Self::Function(&param),
                 values: param,
             })
         }
 
+        let mut gen_count = 0;
         loop {
+            indivisuals.sort_by(|a, b| a.evaluation.partial_cmp(&b.evaluation).unwrap());
+
+            println!("gen:{}", gen_count);
             for i in 0..indivisuals.len() {
-                println!("{},{}", indivisuals[i].values[0], indivisuals[i].evaluation);
+                println!(
+                    "値:{}:{},評価:{}",
+                    indivisuals[i].values[0], indivisuals[i].values[1], indivisuals[i].evaluation
+                );
             }
             println!("---------------");
 
             let index1 = random.gen_range(0..indivisuals.len());
             let index2 = random.gen_range(0..indivisuals.len());
+
+            if index1 == index2 {
+                continue;
+            }
 
             //子作り
             let mut childs = Vec::new();
@@ -67,6 +78,10 @@ impl GeneticAlgorithm {
                     &indivisuals.index(index2),
                     0.5,
                 ));
+            }
+
+            for i in 0..20 {
+                childs.index_mut(i as usize).evaluation = Self::Function(&childs.index(i).values);
             }
 
             childs.push(indivisuals[index1].clone());
@@ -79,11 +94,20 @@ impl GeneticAlgorithm {
 
             *indivisuals.index_mut(index1) = elite;
             *indivisuals.index_mut(index2) = roulette;
+
+            gen_count += 1;
         }
     }
 
-    fn Function(x: f64) -> f64 {
-        x.powf(2.0) as f64 - 10 as f64 * (2 as f64 * PI * x as f64).cos()
+    fn Function(array: &[f64]) -> f64 {
+        let mut result = 0.0;
+        for i in 0..array.len() {
+            result += (array[i].powf(2.0) as f64
+                - 10 as f64 * (2 as f64 * PI * array[i] as f64).cos()
+                + 10 as f64)
+        }
+
+        result
     }
 
     fn learn() {}
@@ -124,7 +148,7 @@ impl GeneticAlgorithm {
 
         let mut test = Vec::new();
         for i in 0..indivisuals.len() {
-            test.push((indivisuals[i].evaluation * 10000 as f64) as i32)
+            test.push((indivisuals[i].evaluation * 100 as f64) as i32)
         }
 
         let result = Self::roulette_choise(&mut test, &mut random);
@@ -143,6 +167,10 @@ impl GeneticAlgorithm {
         let mut max = 0;
         for i in 0..rate.len() {
             max += rate[i];
+        }
+
+        if max == 0 {
+            panic!("?");
         }
 
         let mut temp = random.gen_range(0..max);
@@ -180,10 +208,11 @@ impl GeneticAlgorithm {
         best
     }
 
+    ///小さいほうを選ぶ
     fn elite_choise(indivisuals: &[Indivisual]) -> Indivisual {
         let mut result = Indivisual::new();
         for indivisual in indivisuals {
-            if result.evaluation == f64::MAX || indivisual.evaluation > result.evaluation {
+            if result.evaluation == f64::MAX || indivisual.evaluation < result.evaluation {
                 result = *indivisual;
             }
         }
