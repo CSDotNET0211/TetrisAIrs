@@ -1,8 +1,10 @@
 //! 実数値遺伝アルゴリズム
 
+use core::panic;
 use std::{
     borrow::{Borrow, BorrowMut},
     f64::consts::PI,
+    io,
     ops::{Index, IndexMut},
 };
 
@@ -38,11 +40,11 @@ impl GeneticAlgorithm {
                 Self::get_random(-5.12, -2.12, &mut random),
                 Self::get_random(-5.12, -2.12, &mut random),
                 Self::get_random(-5.12, -2.12, &mut random),
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
+                Self::get_random(-5.12, -2.12, &mut random),
+                Self::get_random(-5.12, -2.12, &mut random),
+                Self::get_random(-5.12, -2.12, &mut random),
+                Self::get_random(-5.12, -2.12, &mut random),
+                Self::get_random(-5.12, -2.12, &mut random),
             ];
             indivisuals.push(Indivisual {
                 evaluation: Self::Function(&param),
@@ -110,7 +112,47 @@ impl GeneticAlgorithm {
         result
     }
 
-    fn learn() {}
+    fn learn() {
+        let mut input = String::new();
+        let indivisual_count;
+        let child_count;
+        let random_max;
+        let random_min;
+
+        println!("前学習データを読み込みますか？");
+        println!("1 Yes");
+        println!("2 No");
+        io::stdin().read_line(&mut input).unwrap();
+        match input.as_str() {
+            "1" => {}
+            "2" => {}
+            _ => panic!("不明な操作"),
+        }
+
+        print!("世代数を入力：");
+        io::stdin().read_line(&mut input).unwrap();
+        indivisual_count = input.parse::<i32>().unwrap();
+
+        print!("子供数を入力：");
+        io::stdin().read_line(&mut input).unwrap();
+        child_count = input.parse::<i32>().unwrap();
+
+        println!("初期化値の上限");
+        io::stdin().read_line(&mut input).unwrap();
+        random_max = input.parse::<f64>().unwrap();
+
+        println!("初期化値の下限");
+        io::stdin().read_line(&mut input).unwrap();
+        random_min = input.parse::<f64>().unwrap();
+
+        println!("MGGで学習を開始します\r\n学習結果は./learn/[index].txtとして保存されます");
+
+        let mut gen_count = 0;
+
+        let mut indivisuals = Vec::new();
+        for _i in 0..indivisual_count {}
+        loop {}
+    }
 
     fn bla_alpha_crossover(
         indivisual1: &Indivisual,
