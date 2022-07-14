@@ -10,7 +10,7 @@ use std::{
 
 use rand::{prelude::ThreadRng, *};
 
-use crate::evaluation::Evaluation;
+use crate::{environment::Environment, evaluation::Evaluation};
 #[derive(Copy, Clone)]
 struct Indivisual {
     pub values: [f64; Evaluation::WEIGHT_COUNT as usize],
@@ -148,10 +148,60 @@ impl GeneticAlgorithm {
         println!("MGGで学習を開始します\r\n学習結果は./learn/[index].txtとして保存されます");
 
         let mut gen_count = 0;
+        let mut random = rand::thread_rng();
 
         let mut indivisuals = Vec::new();
-        for _i in 0..indivisual_count {}
-        loop {}
+        for _i in 0..indivisual_count {
+            let mut param = [0.0; Evaluation::WEIGHT_COUNT as usize];
+            for j in 0..param.len() {
+                param[j] = Self::get_random(random_min, random_max, &mut random);
+            }
+
+            indivisuals.push(Indivisual {
+                values: param,
+                evaluation: Environment::get_eval() as f64,
+            })
+        }
+
+        loop {
+            println!("{}世代", gen_count);
+
+            indivisuals.sort_by(|a, b| b.evaluation.partial_cmp(&a.evaluation).unwrap());
+
+            println!("最も高い評価:{}", indivisuals.index(0).evaluation);
+
+            let mut childs = Vec::new();
+
+            let mut parent1index;
+            let mut parent2index;
+
+            //無限ループ？
+            while {
+                parent1index = random.gen_range(0..indivisuals.len());
+                parent2index = random.gen_range(0..indivisuals.len());
+
+                parent1index == parent2index
+            } {}
+
+            for _child_index in 0..child_count {
+                childs.push(Self::bla_alpha_crossover(
+                    indivisuals.index(parent1index),
+                    indivisuals.index(parent2index),
+                    0.5,
+                ))
+            }
+
+            childs.push(indivisuals.index(parent1index).clone());
+            childs.push(indivisuals.index(parent2index).clone());
+
+            let elite = Self::elite_choise(&childs);
+            let roulette = Self::roulette_choise1(&childs) as usize;
+
+            *indivisuals.index_mut(parent1index) = elite;
+            *indivisuals.index_mut(parent2index) = *childs.index(roulette);
+
+            gen_count += 1;
+        }
     }
 
     fn bla_alpha_crossover(
@@ -254,7 +304,7 @@ impl GeneticAlgorithm {
     fn elite_choise(indivisuals: &[Indivisual]) -> Indivisual {
         let mut result = Indivisual::new();
         for indivisual in indivisuals {
-            if result.evaluation == f64::MAX || indivisual.evaluation < result.evaluation {
+            if result.evaluation == f64::MAX || indivisual.evaluation > result.evaluation {
                 result = *indivisual;
             }
         }

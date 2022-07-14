@@ -242,12 +242,12 @@ impl Mino {
 pub struct Environment {
     next_bag: Vec<i8>,
     cleared_line: isize,
-    score: isize,
+    pub score: isize,
     dead_flag: bool,
     pub now_mino: Mino,
-    pub next: [i8; 5],
+    next: [i8; 5],
     random: ThreadRng,
-    pub field: [bool; Self::FIELD_WIDTH as usize * Self::FIELD_HEIGHT as usize],
+    field: [bool; Self::FIELD_WIDTH as usize * Self::FIELD_HEIGHT as usize],
     can_hold: bool,
     now_hold: i8,
 }
@@ -890,6 +890,37 @@ impl Environment {
             *rotation -= 1;
             if *rotation == Rotation::ZERO - 1 {
                 *rotation = Rotation::LEFT;
+            }
+        }
+    }
+
+    pub fn get_eval() -> i32 {
+        let mut environment = Environment::new();
+        environment.init();
+
+        //検索
+        //操作
+        //終了条件確認(ライン消去数)
+        //スコア
+
+        loop {
+            let mut result = environment.search();
+            for _i in 0..degit(result) {
+                environment.user_input((result % 10) as i8);
+                result /= 10;
+            }
+
+            if environment.cleared_line == 150 || environment.dead_flag {
+                return environment.score as i32;
+            }
+        }
+
+        fn degit(num: i64) -> i32 {
+            if num == 0 {
+                return 1;
+            } else {
+                let num = num as f64;
+                return libm::log10(num) as i32 + 1;
             }
         }
     }
