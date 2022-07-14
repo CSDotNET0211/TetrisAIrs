@@ -112,7 +112,7 @@ impl GeneticAlgorithm {
         result
     }
 
-    fn learn() {
+    pub fn learn() {
         let mut input = String::new();
         let indivisual_count;
         let child_count;
@@ -123,27 +123,31 @@ impl GeneticAlgorithm {
         println!("1 Yes");
         println!("2 No");
         io::stdin().read_line(&mut input).unwrap();
-        match input.as_str() {
+        match input.trim() {
             "1" => {}
             "2" => {}
             _ => panic!("不明な操作"),
         }
 
-        print!("世代数を入力：");
+        input = "".to_string();
+        println!("世代数を入力");
         io::stdin().read_line(&mut input).unwrap();
-        indivisual_count = input.parse::<i32>().unwrap();
+        indivisual_count = input.trim().parse::<i32>().unwrap();
 
-        print!("子供数を入力：");
+        input = "".to_string();
+        println!("子供数を入力");
         io::stdin().read_line(&mut input).unwrap();
-        child_count = input.parse::<i32>().unwrap();
+        child_count = input.trim().parse::<i32>().unwrap();
 
+        input = "".to_string();
         println!("初期化値の上限");
         io::stdin().read_line(&mut input).unwrap();
-        random_max = input.parse::<f64>().unwrap();
+        random_max = input.trim().parse::<f64>().unwrap();
 
+        input = "".to_string();
         println!("初期化値の下限");
         io::stdin().read_line(&mut input).unwrap();
-        random_min = input.parse::<f64>().unwrap();
+        random_min = input.trim().parse::<f64>().unwrap();
 
         println!("MGGで学習を開始します\r\n学習結果は./learn/[index].txtとして保存されます");
 
@@ -168,7 +172,14 @@ impl GeneticAlgorithm {
 
             indivisuals.sort_by(|a, b| b.evaluation.partial_cmp(&a.evaluation).unwrap());
 
-            println!("最も高い評価:{}", indivisuals.index(0).evaluation);
+            println!();
+
+            for i in 0..indivisuals.len() {
+                print!("{}番目の評価:{}\r\n重み", i + 1, indivisuals[i].evaluation);
+                for j in 0..indivisuals[i].values.len() {
+                    print!("{} ", indivisuals[i].values[j]);
+                }
+            }
 
             let mut childs = Vec::new();
 

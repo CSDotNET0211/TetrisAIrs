@@ -480,6 +480,7 @@ impl Environment {
 
             if self.field[(x + y) as usize * 10] {
                 self.dead_flag = true;
+                self.score -= 1000;
                 break;
             }
         }
@@ -654,7 +655,7 @@ impl Environment {
             self.field[(x + y * 10) as usize] = true;
         }
 
-        self.score += 1;
+        self.score += 2;
 
         let line = Self::check_and_clear_line(&mut self.field);
         self.cleared_line += line as isize;
@@ -910,7 +911,7 @@ impl Environment {
                 result /= 10;
             }
 
-            if environment.cleared_line == 150 || environment.dead_flag {
+            if environment.cleared_line >= 150 || environment.dead_flag {
                 return environment.score as i32;
             }
         }

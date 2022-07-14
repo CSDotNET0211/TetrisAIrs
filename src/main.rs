@@ -26,8 +26,6 @@ pub static THREAD_POOL: OnceCell<Mutex<ThreadPool>> = OnceCell::new();
 
 //デバッグ用でスレッド数変えてる
 fn main() {
-    GeneticAlgorithm::bench_mark_test();
-
     assert!(
         THREAD_POOL
             .set(Mutex::new(ThreadPool::new(num_cpus::get())))
@@ -44,6 +42,8 @@ fn main() {
             .is_ok(),
         "err"
     );
+
+    GeneticAlgorithm::learn();
 
     let mut environment = Environment::new();
     environment.init();

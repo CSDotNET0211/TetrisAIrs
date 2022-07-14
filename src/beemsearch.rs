@@ -71,7 +71,7 @@ impl BeemSearch {
         next_count: i8,
     ) -> i64 {
         let counter = Arc::new(AtomicUsize::new(0));
-        //let next_count = 4;
+        let next_count = 4;
 
         //vec![1,2,3,4] -> 1234
         let mut next_int = 0;
