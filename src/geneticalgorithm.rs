@@ -163,7 +163,7 @@ impl GeneticAlgorithm {
 
             indivisuals.push(Indivisual {
                 values: param,
-                evaluation: Environment::get_eval() as f64,
+                evaluation: Environment::get_eval(&param) as f64,
             })
         }
 
@@ -186,7 +186,6 @@ impl GeneticAlgorithm {
             let mut parent1index;
             let mut parent2index;
 
-            //無限ループ？
             while {
                 parent1index = random.gen_range(0..indivisuals.len());
                 parent2index = random.gen_range(0..indivisuals.len());
@@ -199,12 +198,16 @@ impl GeneticAlgorithm {
                     indivisuals.index(parent1index),
                     indivisuals.index(parent2index),
                     0.5,
-                ))
+                ));
+
+                childs.index_mut(childs.len() - 1).evaluation =
+                    Environment::get_eval(&childs.index(childs.len() - 1).values) as f64;
             }
 
             childs.push(indivisuals.index(parent1index).clone());
             childs.push(indivisuals.index(parent2index).clone());
 
+            //評価しろ
             let elite = Self::elite_choise(&childs);
             let roulette = Self::roulette_choise1(&childs) as usize;
 
@@ -226,21 +229,21 @@ impl GeneticAlgorithm {
         child.values = [0.0; Evaluation::WEIGHT_COUNT as usize];
 
         for i in 0..Evaluation::WEIGHT_COUNT as usize {
-            let mut xMax;
-            let mut xMin;
+            let mut x_max;
+            let mut x_min;
             if indivisual1.values[i] < indivisual2.values[i] {
-                xMax = indivisual2.values[i];
-                xMin = indivisual1.values[i];
+                x_max = indivisual2.values[i];
+                x_min = indivisual1.values[i];
             } else {
-                xMax = indivisual1.values[i];
-                xMin = indivisual2.values[i];
+                x_max = indivisual1.values[i];
+                x_min = indivisual2.values[i];
             }
 
-            let dx = (xMin - xMax).abs() * alpha;
-            xMax += dx;
-            xMin -= dx;
+            let dx = (x_min - x_max).abs() * alpha;
+            x_max += dx;
+            x_min -= dx;
 
-            child.values[i] = Self::get_random(xMin, xMax, &mut random);
+            child.values[i] = Self::get_random(x_min, x_max, &mut random);
         }
 
         child

@@ -3,7 +3,7 @@
 use core::panic;
 use rand::prelude::*;
 
-use crate::beemsearch::BeemSearch;
+use crate::{beemsearch::BeemSearch, evaluation::Evaluation, WEIGHT};
 
 pub struct Vector2 {
     pub x: i32,
@@ -895,10 +895,11 @@ impl Environment {
         }
     }
 
-    pub fn get_eval() -> i32 {
+    pub fn get_eval(weight: &[f64; Evaluation::WEIGHT_COUNT as usize]) -> i32 {
         let mut environment = Environment::new();
         environment.init();
 
+        WEIGHT.set(*weight);
         //検索
         //操作
         //終了条件確認(ライン消去数)
@@ -911,7 +912,7 @@ impl Environment {
                 result /= 10;
             }
 
-            if environment.cleared_line >= 150 || environment.dead_flag {
+            if environment.cleared_line >= 40 || environment.dead_flag {
                 return environment.score as i32;
             }
         }
