@@ -20,7 +20,11 @@ impl Evaluation {
 
     pub fn evaluate(field: &[bool], mino: &Mino, cleared_line: i32) -> f64 {
         let cleared_value;
-        let weight = WEIGHT.get().unwrap();
+        let weight;
+
+        unsafe {
+            weight = *WEIGHT;
+        }
 
         match cleared_line {
             0 => cleared_value = 0.0,

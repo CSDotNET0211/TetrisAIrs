@@ -71,7 +71,7 @@ impl BeemSearch {
         next_count: i8,
     ) -> i64 {
         let counter = Arc::new(AtomicUsize::new(0));
-        let next_count = 4;
+        let next_count = 5;
 
         //vec![1,2,3,4] -> 1234
         let mut next_int = 0;
@@ -128,6 +128,7 @@ impl BeemSearch {
             Action::NULL,
             0,
             false,
+            -1,
         );
 
         let mut beem_width = 0;
@@ -323,25 +324,25 @@ impl BeemSearch {
         lock_direction: i8,
         rotate_count: i32,
         move_flag: bool,
+        count_after_softdrop: i32,
     ) {
         if cfg!(debug_assertions) {
             if move_count > 11 {
                 panic!("ループしてない？");
             }
         }
+        if count_after_softdrop >= 3 {
+            return;
+        }
 
-        //ハードドロップ
-        {
-            /*
-            if move_value == 112 || move_value == 13 {
-                println!();
-            } */
+        let mut new_move_diff = 1;
 
-            let mut new_move_diff = Action::HARD_DROP as i64;
-            for _i in 0..move_count {
-                new_move_diff *= 10;
-            }
+        for _i in 0..move_count {
+            new_move_diff *= 10;
+        }
 
+        //ハードドロップ・ソフトドロップ
+        if count_after_softdrop != 0 {
             let mut newmino = mino.clone();
             let mut temp = 0;
 
@@ -355,6 +356,23 @@ impl BeemSearch {
 
             newmino.move_pos(0, -temp);
 
+            //ソフトドロップ
+            if count_after_softdrop == -1 {
+                if temp > 0 {
+                    Self::search(
+                        &mut newmino.clone(),
+                        &field,
+                        move_count + 1,
+                        move_value + new_move_diff * Action::SOFT_DROP as i64,
+                        before_eval,
+                        lock_direction,
+                        rotate_count,
+                        move_flag,
+                        0,
+                    )
+                }
+            }
+
             let hash =
                 Self::get_hash_for_position(newmino.mino_kind, newmino.rotation, &newmino.position);
 
@@ -363,13 +381,13 @@ impl BeemSearch {
                 if let Some(result) = searched_data.get_mut(&hash) {
                     if result.move_count > move_count {
                         result.move_count = move_count;
-                        result.move_value = move_value + new_move_diff;
+                        result.move_value = move_value + new_move_diff * Action::HARD_DROP as i64;
                     }
                 } else {
                     let mut pattern = SearchedPattern::new();
                     pattern.position = newmino.position;
                     pattern.move_count = move_count;
-                    pattern.move_value = move_value + new_move_diff;
+                    pattern.move_value = move_value + new_move_diff * Action::HARD_DROP as i64;
 
                     let mut field_clone = field.clone();
 
@@ -410,20 +428,24 @@ impl BeemSearch {
                 true,
             ) {
                 newmino.move_pos(Vector2::MX1.x, Vector2::MX1.y);
-                let mut temp = Action::MOVE_LEFT as i64;
-                for _i in 0..move_count {
-                    temp *= 10;
+
+                let softdrop_value;
+                if count_after_softdrop == -1 {
+                    softdrop_value = -1;
+                } else {
+                    softdrop_value = count_after_softdrop + 1;
                 }
 
                 Self::search(
                     &mut newmino,
                     &field,
                     move_count + 1,
-                    move_value + temp,
+                    move_value + new_move_diff * Action::MOVE_LEFT as i64,
                     &before_eval,
                     Action::MOVE_LEFT,
                     rotate_count,
                     true,
+                    softdrop_value,
                 );
             }
         }
@@ -443,20 +465,23 @@ impl BeemSearch {
             ) {
                 newmino.move_pos(Vector2::X1.x, Vector2::X1.y);
 
-                let mut temp = Action::MOVE_RIGHT as i64;
-                for _i in 0..move_count {
-                    temp *= 10;
+                let softdrop_value;
+                if count_after_softdrop == -1 {
+                    softdrop_value = -1;
+                } else {
+                    softdrop_value = count_after_softdrop + 1;
                 }
 
                 Self::search(
                     &mut newmino,
                     &field,
                     move_count + 1,
-                    move_value + temp,
+                    move_value + new_move_diff * Action::MOVE_RIGHT as i64,
                     &before_eval,
                     Action::MOVE_RIGHT,
                     rotate_count,
                     true,
+                    softdrop_value,
                 );
             }
         }
@@ -464,7 +489,7 @@ impl BeemSearch {
         let mut result = Vector2::ZERO;
         //右回転
         if !move_flag
-            && rotate_count < 3
+            && rotate_count < 2
             && Environment::try_rotate(Rotate::RIGHT, &field, mino, &mut result)
         {
             let mut newmino = mino.clone();
@@ -482,27 +507,30 @@ impl BeemSearch {
                 newmino.move_pos(result.x, result.y);
                 Environment::simple_rotate(Rotate::RIGHT, &mut newmino, 0);
 
-                let mut temp = Action::ROTATE_RIGHT as i64;
-                for _i in 0..move_count {
-                    temp *= 10;
+                let softdrop_value;
+                if count_after_softdrop == -1 {
+                    softdrop_value = -1;
+                } else {
+                    softdrop_value = count_after_softdrop + 1;
                 }
 
                 Self::search(
                     &mut newmino,
                     &field,
                     move_count + 1,
-                    move_value + temp,
+                    move_value + new_move_diff * Action::ROTATE_RIGHT as i64,
                     &before_eval,
                     lock_direction,
                     rotate_count + 1,
                     move_flag,
+                    softdrop_value,
                 );
             }
         }
 
         //左回転
         if !move_flag
-            && rotate_count < 3
+            && rotate_count < 2
             && Environment::try_rotate(Rotate::LEFT, &field, mino, &mut result)
         {
             let mut newmino = mino.clone();
@@ -520,23 +548,28 @@ impl BeemSearch {
                 newmino.move_pos(result.x, result.y);
                 Environment::simple_rotate(Rotate::LEFT, &mut newmino, 0);
 
-                let mut temp = Action::ROTATE_LEFT as i64;
-                for _i in 0..move_count {
-                    temp *= 10;
+                let softdrop_value;
+                if count_after_softdrop == -1 {
+                    softdrop_value = -1;
+                } else {
+                    softdrop_value = count_after_softdrop + 1;
                 }
 
                 Self::search(
                     &mut newmino,
                     &field,
                     move_count + 1,
-                    move_value + temp,
+                    move_value + new_move_diff * Action::ROTATE_LEFT as i64,
                     &before_eval,
                     lock_direction,
                     rotate_count + 1,
                     move_flag,
+                    softdrop_value,
                 );
             }
         }
+
+        //180回転
     }
 
     ///過去の位置を記録、参照
@@ -563,8 +596,9 @@ impl BeemSearch {
         result
     }
 
+    #[inline(always)]
     ///位置情報を回転情報関係なく均一にする
-    fn get_hash_for_position(kind: i8, rotation: i8, position: &i64) -> i64 {
+    pub fn get_hash_for_position(kind: i8, rotation: i8, position: &i64) -> i64 {
         if rotation == Rotation::ZERO {
             return *position;
         }

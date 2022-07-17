@@ -1,6 +1,7 @@
 //! テトリスシミュレート環境
 
 use core::panic;
+use once_cell::sync::Lazy;
 use rand::prelude::*;
 
 use crate::{beemsearch::BeemSearch, evaluation::Evaluation, WEIGHT};
@@ -580,6 +581,7 @@ impl Environment {
             Action::HARD_DROP => {
                 self.set_mino();
             }
+
             Action::SOFT_DROP => loop {
                 if Self::check_valid_pos(&self.field, &self.now_mino, &Vector2::MY1, 0) {
                     self.now_mino
@@ -588,6 +590,7 @@ impl Environment {
                     break;
                 }
             },
+
             Action::HOLD => self.hold(),
 
             _ => panic!("不明な型"),
@@ -899,7 +902,12 @@ impl Environment {
         let mut environment = Environment::new();
         environment.init();
 
-        WEIGHT.set(*weight);
+        //     let value = WEIGHT.get().unwrap();
+        unsafe {
+            *WEIGHT = *weight;
+        }
+        //   WEIGHT.set(*weight).unwrap();
+
         //検索
         //操作
         //終了条件確認(ライン消去数)

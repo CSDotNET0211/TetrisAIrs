@@ -16,6 +16,5 @@ thread-id = "*"
 once_cell = "*"
 libm = "*"
 
-
 [profile.release]
 debug = true

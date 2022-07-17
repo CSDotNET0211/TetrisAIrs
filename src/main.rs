@@ -11,6 +11,7 @@ use environment::{Action, Environment};
 use evaluation::Evaluation;
 use geneticalgorithm::GeneticAlgorithm;
 use num_cpus;
+use once_cell::sync::Lazy;
 use once_cell::sync::OnceCell;
 use std::time::{Duration, Instant};
 use std::{
@@ -21,7 +22,11 @@ use std::{
 use threadpool::ThreadPool;
 
 use crate::environment::MinoKind;
-pub static WEIGHT: OnceCell<[f64; Evaluation::WEIGHT_COUNT as usize]> = OnceCell::new();
+
+pub static mut WEIGHT: Lazy<[f64; Evaluation::WEIGHT_COUNT as usize]> = Lazy::new(|| {
+    let m = [0.0; Evaluation::WEIGHT_COUNT as usize];
+    m
+});
 pub static THREAD_POOL: OnceCell<Mutex<ThreadPool>> = OnceCell::new();
 
 //デバッグ用でスレッド数変えてる
@@ -33,22 +38,33 @@ fn main() {
         "スレッドプールの初期化失敗"
     );
 
-    assert!(
-        WEIGHT
-            .set([
-                200.1597, 319.1632, -1149.735, 118.6968, 187.1296, -604.2106, -551.1594, -364.9467,
-                -43.58047,
-            ])
-            .is_ok(),
-        "err"
-    );
+    unsafe {
+        *WEIGHT = [
+            -5628.7173895928445,
+            -2450.9359534946434,
+            12769.975461312846,
+            -22231.72228143262,
+            -11297.76613876014,
+            4526.680276187824,
+            -2796.0433150603876,
+            492.1132806920541,
+            3502.358375632634,
+        ];
+    }
 
-    GeneticAlgorithm::learn();
+    //  GeneticAlgorithm::learn();
+    let mut mino = Environment::create_mino_1(MinoKind::I);
+    println!(
+        "{}:{}",
+        BeemSearch::get_hash_for_position(mino.mino_kind, mino.rotation, &mino.position),
+        &mino.position
+    );
+    let mut buf = String::new();
+    io::stdin().read_line(&mut buf).unwrap();
 
     let mut environment = Environment::new();
     environment.init();
 
-    println!("何かキーを入力して検索を開始");
     let mut buf = String::new();
 
     let mut timer;
@@ -76,6 +92,14 @@ fn main() {
         for _i in 0..count {
             environment.user_input((result % 10).try_into().unwrap());
             result /= 10;
+
+            print(
+                &environment.get_field_ref(),
+                &environment.now_mino,
+                elapsed_time,
+            );
+
+            thread::sleep_ms(500);
         }
         /*
         let key = getch(false).unwrap();
