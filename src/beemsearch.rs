@@ -55,7 +55,7 @@ thread_local! {
     ///検索したデータ
     pub static SEARCHED_DATA:RefCell<HashMap<i64, SearchedPattern>>={let  m=HashMap::new(); RefCell::new(m)};
     //過去に通過した位置を記録
-    pub static PASSED_TREE_ROUTE_SET:RefCell<HashSet<i64>>={let  m=HashSet::new();RefCell::new(m)};
+    pub static PASSED_TREE_ROUTE_SET:RefCell<HashMap<i64,u32>>={let  m=HashMap::new();RefCell::new(m)};
     //検索したデータを移行・ソート用
     pub static SEARCHED_DATA_VEC:RefCell<Vec<SearchedPattern>>={let m= Vec::<SearchedPattern>::new();RefCell::new(m)};
 }
@@ -425,7 +425,7 @@ impl BeemSearch {
                 Vector2::MX1.x,
                 Vector2::MX1.y,
                 mino.rotation,
-                true,
+                move_count as u32,
             ) {
                 newmino.move_pos(Vector2::MX1.x, Vector2::MX1.y);
 
@@ -461,7 +461,7 @@ impl BeemSearch {
                 Vector2::X1.x,
                 Vector2::X1.y,
                 mino.rotation,
-                true,
+                move_count as u32,
             ) {
                 newmino.move_pos(Vector2::X1.x, Vector2::X1.y);
 
@@ -493,20 +493,20 @@ impl BeemSearch {
             && Environment::try_rotate(Rotate::RIGHT, &field, mino, &mut result)
         {
             let mut newmino = mino.clone();
-            let mut newrotation = newmino.rotation;
-            Environment::get_next_rotate(Rotate::RIGHT, &mut newrotation);
+            //      let mut newrotation = newmino.rotation;
+            //      Environment::get_next_rotate(Rotate::RIGHT, &mut newrotation);
+
+            newmino.move_pos(result.x, result.y);
+            Environment::simple_rotate(Rotate::RIGHT, &mut newmino, 0);
 
             if !Self::is_passed_before(
                 newmino.mino_kind,
                 newmino.position,
-                result.x,
-                result.y,
-                newrotation,
-                true,
+                0,
+                0,
+                newmino.rotation,
+                move_count as u32,
             ) {
-                newmino.move_pos(result.x, result.y);
-                Environment::simple_rotate(Rotate::RIGHT, &mut newmino, 0);
-
                 let softdrop_value;
                 if count_after_softdrop == -1 {
                     softdrop_value = -1;
@@ -534,20 +534,19 @@ impl BeemSearch {
             && Environment::try_rotate(Rotate::LEFT, &field, mino, &mut result)
         {
             let mut newmino = mino.clone();
-            let mut newrotation = newmino.rotation;
-            Environment::get_next_rotate(Rotate::LEFT, &mut newrotation);
+            //     let mut newrotation = newmino.rotation;
+            //    Environment::get_next_rotate(Rotate::LEFT, &mut newrotation);
 
+            newmino.move_pos(result.x, result.y);
+            Environment::simple_rotate(Rotate::LEFT, &mut newmino, 0);
             if !Self::is_passed_before(
                 newmino.mino_kind,
                 newmino.position,
                 result.x,
                 result.y,
-                newrotation,
-                true,
+                newmino.rotation,
+                move_count as u32,
             ) {
-                newmino.move_pos(result.x, result.y);
-                Environment::simple_rotate(Rotate::LEFT, &mut newmino, 0);
-
                 let softdrop_value;
                 if count_after_softdrop == -1 {
                     softdrop_value = -1;
@@ -579,21 +578,36 @@ impl BeemSearch {
         x_diff: i32,
         y_diff: i32,
         newrotation: i8,
-        apply_history: bool,
+        move_count: u32,
     ) -> bool {
         Mino::add_position_xy(&mut pos, x_diff, y_diff);
 
         let hash = Self::get_hash_for_position(kind, newrotation, &pos);
-        let mut result = false;
-        PASSED_TREE_ROUTE_SET.with(|value| {
-            result = value.borrow().contains(&hash);
+        let mut returnvalue = true;
 
-            if !result && apply_history {
-                value.borrow_mut().insert(hash);
+        PASSED_TREE_ROUTE_SET.with(|value| {
+            let mut mut_value = value.borrow_mut();
+
+            if let Some(result) = mut_value.get_mut(&hash) {
+                //見つかった場合はmoveカウントで判断
+                if *result > move_count {
+                    *result = move_count;
+                    returnvalue = false;
+                }
+            } else {
+                returnvalue = false;
+
+                mut_value.insert(hash, move_count);
             }
+
+            //   result = value.borrow().(&hash);
+
+            //        if !result && apply_history {
+            //            value.borrow_mut().insert(hash);
+            //        }
         });
 
-        result
+        returnvalue
     }
 
     #[inline(always)]
