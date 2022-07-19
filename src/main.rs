@@ -110,7 +110,7 @@ fn main() {
                 elapsed_time,
             );
 
-            thread::sleep_ms(500);
+            // thread::sleep_ms(500);
         }
         /*
         let key = getch(false).unwrap();

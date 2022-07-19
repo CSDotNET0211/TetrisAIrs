@@ -360,7 +360,7 @@ impl BeemSearch {
             if count_after_softdrop == -1 {
                 if temp > 0 {
                     Self::search(
-                        &mut newmino.clone(),
+                        &mut newmino,
                         &field,
                         move_count + 1,
                         move_value + new_move_diff * Action::SOFT_DROP as i64,
@@ -413,6 +413,13 @@ impl BeemSearch {
             });
         }
 
+        let softdrop_value;
+        if count_after_softdrop == -1 {
+            softdrop_value = -1;
+        } else {
+            softdrop_value = count_after_softdrop + 1;
+        }
+
         //左移動
         if lock_direction != Action::MOVE_RIGHT
             && Environment::check_valid_pos(&field, &mino, &Vector2::MX1, 0)
@@ -428,13 +435,6 @@ impl BeemSearch {
                 move_count as u32,
             ) {
                 newmino.move_pos(Vector2::MX1.x, Vector2::MX1.y);
-
-                let softdrop_value;
-                if count_after_softdrop == -1 {
-                    softdrop_value = -1;
-                } else {
-                    softdrop_value = count_after_softdrop + 1;
-                }
 
                 Self::search(
                     &mut newmino,
@@ -464,13 +464,6 @@ impl BeemSearch {
                 move_count as u32,
             ) {
                 newmino.move_pos(Vector2::X1.x, Vector2::X1.y);
-
-                let softdrop_value;
-                if count_after_softdrop == -1 {
-                    softdrop_value = -1;
-                } else {
-                    softdrop_value = count_after_softdrop + 1;
-                }
 
                 Self::search(
                     &mut newmino,
@@ -507,13 +500,6 @@ impl BeemSearch {
                 newmino.rotation,
                 move_count as u32,
             ) {
-                let softdrop_value;
-                if count_after_softdrop == -1 {
-                    softdrop_value = -1;
-                } else {
-                    softdrop_value = count_after_softdrop + 1;
-                }
-
                 Self::search(
                     &mut newmino,
                     &field,
@@ -547,13 +533,6 @@ impl BeemSearch {
                 newmino.rotation,
                 move_count as u32,
             ) {
-                let softdrop_value;
-                if count_after_softdrop == -1 {
-                    softdrop_value = -1;
-                } else {
-                    softdrop_value = count_after_softdrop + 1;
-                }
-
                 Self::search(
                     &mut newmino,
                     &field,
