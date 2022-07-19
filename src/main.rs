@@ -13,6 +13,7 @@ use geneticalgorithm::GeneticAlgorithm;
 use num_cpus;
 use once_cell::sync::Lazy;
 use once_cell::sync::OnceCell;
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use std::{
     io::{self, Read},
@@ -22,6 +23,7 @@ use std::{
 use threadpool::ThreadPool;
 
 use crate::environment::MinoKind;
+use crate::environment::Rotate;
 
 pub static mut WEIGHT: Lazy<[f64; Evaluation::WEIGHT_COUNT as usize]> = Lazy::new(|| {
     let m = [0.0; Evaluation::WEIGHT_COUNT as usize];
@@ -51,13 +53,22 @@ fn main() {
             3502.358375632634,
         ];
     }
-
     //  GeneticAlgorithm::learn();
-    let mut mino = Environment::create_mino_1(MinoKind::I);
+    let mut mino = Environment::create_mino_1(MinoKind::S);
+    //   Environment::simple_rotate(Rotate::RIGHT, &mut mino, 0);
+    // Environment::simple_rotate(Rotate::RIGHT, &mut mino, 0);
+
+    Environment::simple_rotate(Rotate::RIGHT, &mut mino, 0);
     println!(
-        "{}:{}",
-        BeemSearch::get_hash_for_position(mino.mino_kind, mino.rotation, &mino.position),
-        &mino.position
+        "{}",
+        BeemSearch::get_hash_for_position(mino.mino_kind, mino.rotation, &mino.position)
+    );
+    Environment::simple_rotate(Rotate::LEFT, &mut mino, 0);
+    Environment::simple_rotate(Rotate::LEFT, &mut mino, 0);
+    mino.move_pos(1, 0);
+    println!(
+        "{}",
+        BeemSearch::get_hash_for_position(mino.mino_kind, mino.rotation, &mino.position)
     );
     let mut buf = String::new();
     io::stdin().read_line(&mut buf).unwrap();

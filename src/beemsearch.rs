@@ -605,9 +605,9 @@ impl BeemSearch {
 
         match kind {
             MinoKind::T => match rotation {
-                Rotation::RIGHT => return Self::change_hash_order(position, 1203),
+                Rotation::RIGHT => return Self::change_hash_order(position, 2013),
                 Rotation::TURN => return Self::change_hash_order(position, 3210),
-                Rotation::LEFT => return Self::change_hash_order(position, 3021),
+                Rotation::LEFT => return Self::change_hash_order(position, 1320),
                 _ => panic!("a"),
             },
             MinoKind::S => match rotation {
@@ -623,7 +623,7 @@ impl BeemSearch {
                 _ => panic!("a"),
             },
             MinoKind::L => match rotation {
-                Rotation::RIGHT => Self::change_hash_order(position, 1230),
+                Rotation::RIGHT => Self::change_hash_order(position, 3012),
                 Rotation::TURN => Self::change_hash_order(position, 3210),
                 Rotation::LEFT => Self::change_hash_order(position, 0321),
                 _ => panic!("a"),
@@ -631,7 +631,7 @@ impl BeemSearch {
             MinoKind::J => match rotation {
                 Rotation::RIGHT => Self::change_hash_order(position, 1023),
                 Rotation::TURN => Self::change_hash_order(position, 3210),
-                Rotation::LEFT => Self::change_hash_order(position, 3201),
+                Rotation::LEFT => Self::change_hash_order(position, 2310),
                 _ => panic!("a"),
             },
             MinoKind::I => match rotation {
@@ -644,27 +644,23 @@ impl BeemSearch {
     }
 
     ///位置情報を指定された順番に書き換える
-    pub fn change_hash_order(hashcode: &i64, order: i32) -> i64 {
+    pub fn change_hash_order(hashcode: &i64, mut order: i32) -> i64 {
         let mut result = 0;
+
         for i in 0..4 {
             let mut temphash = *hashcode;
-            let mut temporder = order;
 
-            for _j in 0..i {
+            for _i in 0..i {
                 temphash /= 10000;
-                temporder /= 10;
             }
-
             temphash %= 10000;
-            temporder %= 10;
 
-            temporder = 3 - temporder;
-
-            for _j in 0..temporder {
+            for _i in 0..3 - (order % 10) {
                 temphash *= 10000;
             }
 
             result += temphash;
+            order /= 10;
         }
 
         result
