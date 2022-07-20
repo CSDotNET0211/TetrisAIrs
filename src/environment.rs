@@ -1,10 +1,9 @@
 //! テトリスシミュレート環境
 
 use core::panic;
-use once_cell::sync::Lazy;
 use rand::prelude::*;
 
-use crate::{beemsearch::BeemSearch, evaluation::Evaluation, WEIGHT};
+use crate::{beemsearch::BeemSearch, degit, evaluation::Evaluation, WEIGHT};
 
 pub struct Vector2 {
     pub x: i32,
@@ -922,15 +921,6 @@ impl Environment {
 
             if environment.cleared_line >= 40 || environment.dead_flag {
                 return environment.score as i32;
-            }
-        }
-
-        fn degit(num: i64) -> i32 {
-            if num == 0 {
-                return 1;
-            } else {
-                let num = num as f64;
-                return libm::log10(num) as i32 + 1;
             }
         }
     }

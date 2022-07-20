@@ -5,7 +5,6 @@ use crate::evaluation::*;
 use crate::THREAD_POOL;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -71,7 +70,7 @@ impl BeemSearch {
         next_count: i8,
     ) -> i64 {
         let counter = Arc::new(AtomicUsize::new(0));
-        let next_count = 5;
+        //  let next_count = 5;
 
         //vec![1,2,3,4] -> 1234
         let mut next_int = 0;
@@ -111,9 +110,9 @@ impl BeemSearch {
     ///スレッド別に処理データを渡して処理する関数
     fn proceed_task(
         processdata: &ProcessData,
-        counter: Arc<AtomicUsize>,
+        counter: &Arc<AtomicUsize>,
         queue: Arc<Mutex<Vec<ProcessData>>>,
-        best: Arc<Mutex<SearchedPattern>>,
+        best: &mut SearchedPattern,
     ) {
         init();
 
@@ -172,12 +171,11 @@ impl BeemSearch {
                     update_if_better(&mut best_in_this_pattern, &vec.borrow_mut()[beem], first);
                 });
             }
-            {
-                let mut value = best.lock().unwrap();
-                if value.eval < best_in_this_pattern.eval {
-                    *value = best_in_this_pattern;
-                }
+
+            if best.eval < best_in_this_pattern.eval {
+                *best = best_in_this_pattern;
             }
+
         //更新
         } else {
             for beem in 0..beem_width {
@@ -268,7 +266,38 @@ impl BeemSearch {
     fn get_loop(queue: Arc<Mutex<Vec<ProcessData>>>, counter: Arc<AtomicUsize>) -> i64 {
         let thread_pool = THREAD_POOL.get().unwrap().lock().unwrap();
         let best = Arc::new(Mutex::new(SearchedPattern::new()));
+        //ここら辺のarc参照にできる？
+        loop {
+            let data;
+            {
+                let mut lock = queue.lock().unwrap();
+                let len = lock.len();
 
+                if lock.len() > 5 {
+                    data = lock.split_off(5);
+                } else if len != 0 {
+                    data = lock.split_off(len);
+                } else {
+                    //取り出すアイテムが存在しない
+                    if counter.load(std::sync::atomic::Ordering::SeqCst) == 0 {
+                        return best.lock().unwrap().move_value;
+                    } else {
+                        continue;
+                    }
+                }
+            }
+
+            //   let data_copy = data.split_off(data.len());
+
+            let new_counter = Arc::clone(&counter);
+            let new_best = Arc::clone(&best);
+            let queue_origin = Arc::clone(&queue);
+
+            thread_pool.execute(move || {
+                Self::get_loop_multiply(data, new_best, queue_origin, new_counter);
+            });
+        }
+        /*
         loop {
             let data = queue.lock().unwrap().pop();
 
@@ -288,9 +317,31 @@ impl BeemSearch {
                 }
             }
         }
+        */
     }
 
-    fn get_loop_multiply(queue: Vec<ProcessData>) {
+    fn get_loop_multiply(
+        queue: Vec<ProcessData>,
+        best: Arc<Mutex<SearchedPattern>>,
+        queue_origin: Arc<Mutex<Vec<ProcessData>>>,
+        counter: Arc<AtomicUsize>,
+    ) {
+        let mut best_local = SearchedPattern::new();
+        /*
+        truncateでlockしている間にまとめて取り出し、所有権ごとこの関数に渡す
+        こっちでそれぞれのbestを算出して、この関数内のbestを決めてから総合bestに渡す（ロック時間削減
+        */
+        for data in queue {
+            Self::proceed_task(&data, &counter, Arc::clone(&queue_origin), &mut best_local);
+        }
+        {
+            let mut lock = best.lock().unwrap();
+            if best_local.eval < lock.eval {
+                lock.move_value = best_local.move_value;
+                lock.eval = best_local.eval;
+                lock.position = best_local.position;
+            }
+        }
         /*    for _i in queue.len() {
             let data = queue.pop().unwrap();
 
@@ -578,12 +629,6 @@ impl BeemSearch {
 
                 mut_value.insert(hash, move_count);
             }
-
-            //   result = value.borrow().(&hash);
-
-            //        if !result && apply_history {
-            //            value.borrow_mut().insert(hash);
-            //        }
         });
 
         returnvalue

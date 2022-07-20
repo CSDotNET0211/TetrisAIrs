@@ -7,19 +7,13 @@ mod threadpool;
 
 use beemsearch::BeemSearch;
 use draw::print;
-use environment::{Action, Environment};
+use environment::Environment;
 use evaluation::Evaluation;
-use geneticalgorithm::GeneticAlgorithm;
 use num_cpus;
 use once_cell::sync::Lazy;
 use once_cell::sync::OnceCell;
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
-use std::{
-    io::{self, Read},
-    sync::Mutex,
-    thread, time,
-};
+use std::time::Instant;
+use std::{io, sync::Mutex};
 use threadpool::ThreadPool;
 
 use crate::environment::MinoKind;
@@ -76,8 +70,6 @@ fn main() {
     let mut environment = Environment::new();
     environment.init();
 
-    let mut buf = String::new();
-
     let mut timer;
     let mut elapsed_time = 0;
     loop {
@@ -104,11 +96,11 @@ fn main() {
             environment.user_input((result % 10).try_into().unwrap());
             result /= 10;
 
-            print(
+            /*     print(
                 &environment.get_field_ref(),
                 &environment.now_mino,
                 elapsed_time,
-            );
+            ); */
 
             // thread::sleep_ms(500);
         }

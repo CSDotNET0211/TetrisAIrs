@@ -1,9 +1,8 @@
 //! 盤面評価
 
-use std::{cell::RefCell, io};
+use std::cell::RefCell;
 
 use crate::{
-    draw,
     environment::{Environment, Mino},
     WEIGHT,
 };
