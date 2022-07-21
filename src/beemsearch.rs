@@ -326,6 +326,7 @@ impl BeemSearch {
         queue_origin: Arc<Mutex<Vec<ProcessData>>>,
         counter: Arc<AtomicUsize>,
     ) {
+        counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let mut best_local = SearchedPattern::new();
         /*
         truncateでlockしている間にまとめて取り出し、所有権ごとこの関数に渡す
@@ -342,6 +343,8 @@ impl BeemSearch {
                 lock.position = best_local.position;
             }
         }
+
+        counter.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
         /*    for _i in queue.len() {
             let data = queue.pop().unwrap();
 
