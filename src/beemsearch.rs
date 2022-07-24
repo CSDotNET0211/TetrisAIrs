@@ -23,6 +23,12 @@ struct ProcessData {
 
 impl ProcessData {}
 
+enum Tspin {
+    No,
+    Yes,
+    Mini,
+}
+
 #[derive(Clone, Copy)]
 ///検索データ
 pub struct SearchedPattern {
@@ -31,6 +37,8 @@ pub struct SearchedPattern {
     pub eval: f64,
     pub move_count: i32,
     pub field_index: i32,
+    pub btb: bool,
+    pub can_hold: bool,
 }
 
 impl SearchedPattern {
@@ -41,6 +49,8 @@ impl SearchedPattern {
             eval: f64::MIN,
             move_count: -1,
             field_index: -1,
+            btb: false,
+            can_hold: false,
         }
     }
 }
@@ -128,6 +138,7 @@ impl BeemSearch {
             0,
             false,
             -1,
+            Tspin::No,
         );
 
         let mut beem_width = 0;
@@ -156,6 +167,8 @@ impl BeemSearch {
                 eval: 0.0,
                 field_index: 0,
                 move_count: 0,
+                btb: false,
+                can_hold: false,
             };
 
             for beem in 0..beem_width {
@@ -178,6 +191,8 @@ impl BeemSearch {
 
         //更新
         } else {
+            counter.fetch_add(beem_width, std::sync::atomic::Ordering::SeqCst);
+
             for beem in 0..beem_width {
                 let mut eval = 0.0;
                 let mut firstmove = 0;
@@ -234,7 +249,6 @@ impl BeemSearch {
                             first_move: first,
                         };
 
-                        counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                         {
                             queue.lock().unwrap().push(process_data);
                         }
@@ -272,11 +286,11 @@ impl BeemSearch {
             {
                 let mut lock = queue.lock().unwrap();
                 let len = lock.len();
-
-                if lock.len() > 5 {
-                    data = lock.split_off(5);
+                //     data = lock.split_off(0);
+                if len > 3 {
+                    data = lock.split_off(len - 3);
                 } else if len != 0 {
-                    data = lock.split_off(len);
+                    data = lock.split_off(0);
                 } else {
                     //取り出すアイテムが存在しない
                     if counter.load(std::sync::atomic::Ordering::SeqCst) == 0 {
@@ -287,8 +301,6 @@ impl BeemSearch {
                 }
             }
 
-            //   let data_copy = data.split_off(data.len());
-
             let new_counter = Arc::clone(&counter);
             let new_best = Arc::clone(&best);
             let queue_origin = Arc::clone(&queue);
@@ -297,27 +309,6 @@ impl BeemSearch {
                 Self::get_loop_multiply(data, new_best, queue_origin, new_counter);
             });
         }
-        /*
-        loop {
-            let data = queue.lock().unwrap().pop();
-
-            match data {
-                Some(result) => {
-                    let counter = Arc::clone(&counter);
-                    let best = Arc::clone(&best);
-                    let queue = Arc::clone(&queue);
-                    thread_pool.execute(move || {
-                        Self::proceed_task(&result, counter, queue, best);
-                    });
-                }
-                None => {
-                    if counter.load(std::sync::atomic::Ordering::SeqCst) == 0 {
-                        return best.lock().unwrap().move_value;
-                    }
-                }
-            }
-        }
-        */
     }
 
     fn get_loop_multiply(
@@ -328,16 +319,13 @@ impl BeemSearch {
     ) {
         counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let mut best_local = SearchedPattern::new();
-        /*
-        truncateでlockしている間にまとめて取り出し、所有権ごとこの関数に渡す
-        こっちでそれぞれのbestを算出して、この関数内のbestを決めてから総合bestに渡す（ロック時間削減
-        */
-        for data in queue {
-            Self::proceed_task(&data, &counter, Arc::clone(&queue_origin), &mut best_local);
+
+        for data in &queue {
+            Self::proceed_task(data, &counter, Arc::clone(&queue_origin), &mut best_local);
         }
         {
             let mut lock = best.lock().unwrap();
-            if best_local.eval < lock.eval {
+            if best_local.eval > lock.eval {
                 lock.move_value = best_local.move_value;
                 lock.eval = best_local.eval;
                 lock.position = best_local.position;
@@ -345,27 +333,6 @@ impl BeemSearch {
         }
 
         counter.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
-        /*    for _i in queue.len() {
-            let data = queue.pop().unwrap();
-
-
-
-            match data {
-                Some(result) => {
-                    let counter = Arc::clone(&counter);
-                    let best = Arc::clone(&best);
-                    let queue = Arc::clone(&queue);
-                    thread_pool.execute(move || {
-                        Self::proceed_task(&result, counter, queue, best);
-                    });
-                }
-                None => {
-                    if counter.load(std::sync::atomic::Ordering::SeqCst) == 0 {
-                        return best.lock().unwrap().move_value;
-                    }
-                }
-            }
-        } */
     }
 
     //再帰で設置パターン列挙
@@ -379,6 +346,7 @@ impl BeemSearch {
         rotate_count: i32,
         move_flag: bool,
         count_after_softdrop: i32,
+        tspin: Tspin,
     ) {
         if cfg!(debug_assertions) {
             if move_count > 11 {
@@ -423,6 +391,7 @@ impl BeemSearch {
                         rotate_count,
                         move_flag,
                         0,
+                        Tspin::No,
                     )
                 }
             }
@@ -500,6 +469,7 @@ impl BeemSearch {
                     rotate_count,
                     true,
                     softdrop_value,
+                    Tspin::No,
                 );
             }
         }
@@ -529,6 +499,7 @@ impl BeemSearch {
                     rotate_count,
                     true,
                     softdrop_value,
+                    Tspin::No,
                 );
             }
         }

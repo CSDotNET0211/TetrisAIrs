@@ -1,11 +1,15 @@
 mod beemsearch;
+mod consttable;
 mod draw;
 mod environment;
 mod evaluation;
-mod geneticalgorithm;
 mod threadpool;
 
-use beemsearch::BeemSearch;
+use consttable::TSPIN_DOUBLE_TABLE;
+use consttable::TSPIN_MINI_DOUBLE_TABLE;
+use consttable::TSPIN_MINI_SINGLE_TABLE;
+use consttable::TSPIN_SINGLE_TABLE;
+use consttable::TSPIN_TRIPLE_TABLE;
 use draw::print;
 use environment::Environment;
 use evaluation::Evaluation;
@@ -16,14 +20,34 @@ use std::time::Instant;
 use std::{io, sync::Mutex};
 use threadpool::ThreadPool;
 
-use crate::environment::MinoKind;
-use crate::environment::Rotate;
+use crate::consttable::{AttackTable, QUAD_TABLE};
 
 pub static mut WEIGHT: Lazy<[f64; Evaluation::WEIGHT_COUNT as usize]> = Lazy::new(|| {
     let m = [0.0; Evaluation::WEIGHT_COUNT as usize];
     m
 });
 pub static THREAD_POOL: OnceCell<Mutex<ThreadPool>> = OnceCell::new();
+/*
+#[link(name = "TestDllForRust", kind = "static")]
+extern "C" {
+    fn Test1();
+    fn Test2(value: i32) -> i32;
+    fn Test3(value: &mut i32);
+    fn Test5(value: &&mut i8) -> bool;
+    fn Test6(value: fn(i32));
+    fn Test7(value: &Struct7) -> i32;
+}
+struct Struct7 {
+    x: i32,
+    y: i32,
+}
+struct MinoState {
+    mino_type: u8,
+    x: i32,
+    y: i32,
+    rotation: i32,
+    tspin: i32,
+}*/
 
 //デバッグ用でスレッド数変えてる
 fn main() {
@@ -33,6 +57,8 @@ fn main() {
             .is_ok(),
         "スレッドプールの初期化失敗"
     );
+
+    init_values();
 
     unsafe {
         *WEIGHT = [
@@ -47,23 +73,10 @@ fn main() {
             3502.358375632634,
         ];
     }
-    //  GeneticAlgorithm::learn();
-    let mut mino = Environment::create_mino_1(MinoKind::S);
-    //   Environment::simple_rotate(Rotate::RIGHT, &mut mino, 0);
-    // Environment::simple_rotate(Rotate::RIGHT, &mut mino, 0);
+    fn test(value: i32) {
+        println!("{}が入力されたよ！", value);
+    }
 
-    Environment::simple_rotate(Rotate::RIGHT, &mut mino, 0);
-    println!(
-        "{}",
-        BeemSearch::get_hash_for_position(mino.mino_kind, mino.rotation, &mino.position)
-    );
-    Environment::simple_rotate(Rotate::LEFT, &mut mino, 0);
-    Environment::simple_rotate(Rotate::LEFT, &mut mino, 0);
-    mino.move_pos(1, 0);
-    println!(
-        "{}",
-        BeemSearch::get_hash_for_position(mino.mino_kind, mino.rotation, &mino.position)
-    );
     let mut buf = String::new();
     io::stdin().read_line(&mut buf).unwrap();
 
@@ -132,4 +145,54 @@ fn degit(num: i64) -> i32 {
         let num = num as f64;
         return libm::log10(num) as i32 + 1;
     }
+}
+
+fn init_values() {
+    QUAD_TABLE
+        .set([
+            &AttackTable::QUAD,
+            &AttackTable::B2B1QUAD,
+            &AttackTable::B2B2QUAD,
+        ])
+        .unwrap();
+
+    TSPIN_MINI_SINGLE_TABLE
+        .set([
+            &AttackTable::TSPINMINISINGLE,
+            &AttackTable::B2B1TSPINMINISINGLE,
+            &AttackTable::B2B2TSPINMINISINGLE,
+        ])
+        .unwrap();
+
+    TSPIN_SINGLE_TABLE
+        .set([
+            &AttackTable::TSPINSINGLE,
+            &AttackTable::B2B1TSPINSINGLE,
+            &AttackTable::B2B2TSPINSINGLE,
+        ])
+        .unwrap();
+
+    TSPIN_MINI_DOUBLE_TABLE
+        .set([
+            &AttackTable::TSPINMINIDOUBLE,
+            &AttackTable::B2B1TSPINMINIDOUBLE,
+            &AttackTable::B2B2TSPINMINIDOUBLE,
+        ])
+        .unwrap();
+
+    TSPIN_DOUBLE_TABLE
+        .set([
+            &AttackTable::TSPINDOUBLE,
+            &AttackTable::B2B1TSPINDOUBLE,
+            &AttackTable::B2B2TSPINDOUBLE,
+        ])
+        .unwrap();
+
+    TSPIN_TRIPLE_TABLE
+        .set([
+            &AttackTable::TSPINTRIPLE,
+            &AttackTable::B2B1TSPINTRIPLE,
+            &AttackTable::B2B2TSPINTRIPLE,
+        ])
+        .unwrap();
 }

@@ -3,6 +3,10 @@
 use core::panic;
 use rand::prelude::*;
 
+use crate::consttable::{
+    AttackTable, SRSTable, QUAD_TABLE, TSPIN_DOUBLE_TABLE, TSPIN_MINI_DOUBLE_TABLE,
+    TSPIN_MINI_SINGLE_TABLE, TSPIN_SINGLE_TABLE, TSPIN_TRIPLE_TABLE,
+};
 use crate::{beemsearch::BeemSearch, degit, evaluation::Evaluation, WEIGHT};
 
 pub struct Vector2 {
@@ -255,210 +259,6 @@ pub struct Environment {
 impl Environment {
     pub const FIELD_WIDTH: usize = 10;
     pub const FIELD_HEIGHT: usize = 26;
-
-    const JROTATE_TABLE: [[Vector2; 4]; 4] = [
-        [Vector2::X2, Vector2::ONE, Vector2::ZERO, Vector2::MONE],
-        [
-            Vector2::MY2,
-            Vector2::new(1, -1),
-            Vector2::ZERO,
-            Vector2::new(-1, 1),
-        ],
-        [Vector2::MX2, Vector2::MONE, Vector2::ZERO, Vector2::ONE],
-        [
-            Vector2::Y2,
-            Vector2::new(-1, 1),
-            Vector2::ZERO,
-            Vector2::new(1, -1),
-        ],
-    ];
-
-    const LROTATE_TABLE: [[Vector2; 4]; 4] = [
-        [Vector2::MY2, Vector2::ONE, Vector2::ZERO, Vector2::MONE],
-        [
-            Vector2::MX2,
-            Vector2::new(1, -1),
-            Vector2::ZERO,
-            Vector2::new(-1, 1),
-        ],
-        [Vector2::Y2, Vector2::MONE, Vector2::ZERO, Vector2::ONE],
-        [
-            Vector2::X2,
-            Vector2::new(-1, 1),
-            Vector2::ZERO,
-            Vector2::new(1, -1),
-        ],
-    ];
-
-    const SROTATE_TABLE: [[Vector2; 4]; 4] = [
-        [
-            Vector2::new(1, -1),
-            Vector2::MY2,
-            Vector2::ONE,
-            Vector2::ZERO,
-        ],
-        [
-            Vector2::MONE,
-            Vector2::MX2,
-            Vector2::new(1, -1),
-            Vector2::ZERO,
-        ],
-        [
-            Vector2::new(-1, 1),
-            Vector2::Y2,
-            Vector2::MONE,
-            Vector2::ZERO,
-        ],
-        [
-            Vector2::ONE,
-            Vector2::X2,
-            Vector2::new(-1, 1),
-            Vector2::ZERO,
-        ],
-    ];
-
-    const ZROTATE_TABLE: [[Vector2; 4]; 4] = [
-        [
-            Vector2::X2,
-            Vector2::new(1, -1),
-            Vector2::ZERO,
-            Vector2::MONE,
-        ],
-        [
-            Vector2::MY2,
-            Vector2::MONE,
-            Vector2::ZERO,
-            Vector2::new(-1, 1),
-        ],
-        [
-            Vector2::MX2,
-            Vector2::new(-1, 1),
-            Vector2::ZERO,
-            Vector2::ONE,
-        ],
-        [
-            Vector2::Y2,
-            Vector2::ONE,
-            Vector2::ZERO,
-            Vector2::new(1, -1),
-        ],
-    ];
-
-    const TROTATE_TABLE: [[Vector2; 4]; 4] = [
-        [
-            Vector2::new(1, -1),
-            Vector2::ONE,
-            Vector2::ZERO,
-            Vector2::MONE,
-        ],
-        [
-            Vector2::MONE,
-            Vector2::new(1, -1),
-            Vector2::ZERO,
-            Vector2::new(-1, 1),
-        ],
-        [
-            Vector2::new(-1, 1),
-            Vector2::MONE,
-            Vector2::ZERO,
-            Vector2::ONE,
-        ],
-        [
-            Vector2::ONE,
-            Vector2::new(-1, 1),
-            Vector2::ZERO,
-            Vector2::new(1, -1),
-        ],
-    ];
-
-    const IROTATE_TABLE: [[Vector2; 4]; 4] = [
-        [
-            Vector2::new(2, 1),
-            Vector2::X1,
-            Vector2::MY1,
-            Vector2::new(-1, -2),
-        ],
-        [
-            Vector2::new(1, -2),
-            Vector2::MY1,
-            Vector2::MX1,
-            Vector2::new(-2, 1),
-        ],
-        [
-            Vector2::new(-2, -1),
-            Vector2::MX1,
-            Vector2::Y1,
-            Vector2::new(1, 2),
-        ],
-        [
-            Vector2::new(-1, 2),
-            Vector2::Y1,
-            Vector2::X1,
-            Vector2::new(2, -1),
-        ],
-    ];
-
-    const KICK_TABLE: [[Vector2; 5]; 4] = [
-        [
-            Vector2::ZERO,
-            Vector2::MX1,
-            Vector2::new(-1, 1),
-            Vector2::MY2,
-            Vector2::new(-1, -2),
-        ],
-        [
-            Vector2::ZERO,
-            Vector2::X1,
-            Vector2::new(1, -1),
-            Vector2::Y2,
-            Vector2::new(1, 2),
-        ],
-        [
-            Vector2::ZERO,
-            Vector2::X1,
-            Vector2::ONE,
-            Vector2::MY2,
-            Vector2::new(1, -2),
-        ],
-        [
-            Vector2::ZERO,
-            Vector2::MX1,
-            Vector2::MONE,
-            Vector2::Y2,
-            Vector2::new(-1, 2),
-        ],
-    ];
-
-    const IKICK_TABLE: [[Vector2; 5]; 4] = [
-        [
-            Vector2::ZERO,
-            Vector2::MX2,
-            Vector2::X1,
-            Vector2::new(-2, -1),
-            Vector2::new(1, 2),
-        ],
-        [
-            Vector2::ZERO,
-            Vector2::MX1,
-            Vector2::X2,
-            Vector2::new(-1, 2),
-            Vector2::new(2, -1),
-        ],
-        [
-            Vector2::ZERO,
-            Vector2::X2,
-            Vector2::MX1,
-            Vector2::new(2, 1),
-            Vector2::new(-1, -2),
-        ],
-        [
-            Vector2::ZERO,
-            Vector2::X1,
-            Vector2::MX2,
-            Vector2::new(1, -2),
-            Vector2::new(-2, 1),
-        ],
-    ];
 
     ///ミノ情報を作成して環境を更新する
     pub fn create_mino(&mut self, mino: i8) {
@@ -806,10 +606,10 @@ impl Environment {
                     if Self::check_valid_pos(
                         &field,
                         &current,
-                        &(&Self::IKICK_TABLE[current.rotation as usize][i]).revert(),
+                        &(&SRSTable::IKICK_TABLE[current.rotation as usize][i]).revert(),
                         -5,
                     ) {
-                        *srspos = Environment::IKICK_TABLE[current.rotation as usize][i].revert();
+                        *srspos = SRSTable::IKICK_TABLE[current.rotation as usize][i].revert();
                         Self::simple_rotate(Rotate::RIGHT, current, -5);
                         return true;
                     }
@@ -817,10 +617,10 @@ impl Environment {
                     if Self::check_valid_pos(
                         &field,
                         &current,
-                        &(&Self::KICK_TABLE[current.rotation as usize][i]).revert(),
+                        &(&SRSTable::KICK_TABLE[current.rotation as usize][i]).revert(),
                         -5,
                     ) {
-                        *srspos = Self::KICK_TABLE[current.rotation as usize][i].revert();
+                        *srspos = SRSTable::KICK_TABLE[current.rotation as usize][i].revert();
                         Self::simple_rotate(Rotate::RIGHT, current, -5);
                         return true;
                     }
@@ -835,22 +635,22 @@ impl Environment {
                     if Self::check_valid_pos(
                         &field,
                         &current,
-                        &Self::IKICK_TABLE[before_rotate as usize][i],
+                        &SRSTable::IKICK_TABLE[before_rotate as usize][i],
                         -5,
                     ) {
                         Self::simple_rotate(Rotate::LEFT, current, -5);
-                        *srspos = Self::IKICK_TABLE[before_rotate as usize][i].clone();
+                        *srspos = SRSTable::IKICK_TABLE[before_rotate as usize][i].clone();
                         return true;
                     }
                 } else {
                     if Self::check_valid_pos(
                         &field,
                         &current,
-                        &Self::KICK_TABLE[before_rotate as usize][i],
+                        &SRSTable::KICK_TABLE[before_rotate as usize][i],
                         -5,
                     ) {
                         Self::simple_rotate(Rotate::LEFT, current, -5);
-                        *srspos = Self::KICK_TABLE[before_rotate as usize][i].clone();
+                        *srspos = SRSTable::KICK_TABLE[before_rotate as usize][i].clone();
                         return true;
                     }
                 }
@@ -869,12 +669,12 @@ impl Environment {
         mino.move_pos(addtemp, addtemp);
 
         match mino.mino_kind as i8 {
-            MinoKind::J => move_pos = Environment::JROTATE_TABLE,
-            MinoKind::L => move_pos = Environment::LROTATE_TABLE,
-            MinoKind::S => move_pos = Environment::SROTATE_TABLE,
-            MinoKind::Z => move_pos = Environment::ZROTATE_TABLE,
-            MinoKind::T => move_pos = Environment::TROTATE_TABLE,
-            MinoKind::I => move_pos = Environment::IROTATE_TABLE,
+            MinoKind::J => move_pos = SRSTable::JROTATE_TABLE,
+            MinoKind::L => move_pos = SRSTable::LROTATE_TABLE,
+            MinoKind::S => move_pos = SRSTable::SROTATE_TABLE,
+            MinoKind::Z => move_pos = SRSTable::ZROTATE_TABLE,
+            MinoKind::T => move_pos = SRSTable::TROTATE_TABLE,
+            MinoKind::I => move_pos = SRSTable::IROTATE_TABLE,
             _ => panic!("なにそれ"),
         }
 
@@ -922,6 +722,53 @@ impl Environment {
             if environment.cleared_line >= 40 || environment.dead_flag {
                 return environment.score as i32;
             }
+        }
+    }
+
+    pub fn get_attack_garbage(
+        cleared_line: u32,
+        is_tspin: bool,
+        is_tspin_mini: bool,
+        b2b_combo: u32,
+        combo: u32,
+        is_pc: bool,
+    ) -> u32 {
+        let b2b_level;
+        match b2b_combo {
+            0 => b2b_level = 0,
+            1..=2 => b2b_level = 1,
+            _ => b2b_level = 2,
+        }
+
+        match cleared_line {
+            0 => 0,
+            1 => {
+                if is_tspin {
+                    TSPIN_SINGLE_TABLE.get().unwrap()[b2b_level][combo as usize]
+                } else if is_tspin_mini {
+                    TSPIN_MINI_SINGLE_TABLE.get().unwrap()[b2b_level][combo as usize]
+                } else {
+                    AttackTable::SINGLE[combo as usize]
+                }
+            }
+            2 => {
+                if is_tspin {
+                    TSPIN_DOUBLE_TABLE.get().unwrap()[b2b_level][combo as usize]
+                } else if is_tspin_mini {
+                    TSPIN_MINI_DOUBLE_TABLE.get().unwrap()[b2b_level][combo as usize]
+                } else {
+                    AttackTable::DOUBLE[combo as usize]
+                }
+            }
+            3 => {
+                if is_tspin {
+                    TSPIN_TRIPLE_TABLE.get().unwrap()[b2b_level][combo as usize]
+                } else {
+                    AttackTable::TRIPLE[combo as usize]
+                }
+            }
+            4 => QUAD_TABLE.get().unwrap()[b2b_level][combo as usize],
+            _ => panic!("なにこれ"),
         }
     }
 }
