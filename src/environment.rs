@@ -359,6 +359,7 @@ impl Environment {
                     &self.field,
                     &mut self.now_mino,
                     &mut srs,
+                    None,
                 ) {
                     self.now_mino.move_pos(srs.x as i32, srs.y as i32);
                     Self::simple_rotate(Rotate::RIGHT, &mut self.now_mino, 0);
@@ -371,6 +372,7 @@ impl Environment {
                     &self.field,
                     &mut self.now_mino,
                     &mut srs,
+                    None,
                 ) {
                     self.now_mino.move_pos(srs.x as i32, srs.y as i32);
                     Self::simple_rotate(Rotate::LEFT, &mut self.now_mino, 0);
@@ -500,6 +502,25 @@ impl Environment {
         true
     }
 
+    ///位置が適切かどうか
+    #[inline(always)]
+    pub fn check_filled_pos(
+        field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
+        x: i32,
+        y: i32,
+    ) -> bool {
+        if !(x < Environment::FIELD_WIDTH as i32
+            && x >= 0
+            && y >= 0
+            && y < Environment::FIELD_HEIGHT as i32
+            && !field[(x + y * 10) as usize])
+        {
+            return false;
+        }
+
+        true
+    }
+
     ///ライン消去できるか判断、出来ればフィールド更新してライン消去数を返す
     pub fn check_and_clear_line(
         field: &mut [bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
@@ -592,16 +613,22 @@ impl Environment {
         field: &[bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
         current: &mut Mino,
         srspos: &mut Vector2,
+        test5: Option<bool>,
     ) -> bool {
         if current.mino_kind == MinoKind::O {
             return false;
         }
+        test5 = Some(false);
 
         let before_rotate = current.rotation;
         Self::simple_rotate(rotate, current, 5);
 
         if rotate == Rotate::LEFT as i8 {
             for i in 0..5 {
+                if i == 4 && test5 != Option::None {
+                    test5 = Some(true);
+                }
+
                 if current.mino_kind == MinoKind::I {
                     if Self::check_valid_pos(
                         &field,
@@ -769,6 +796,27 @@ impl Environment {
             }
             4 => QUAD_TABLE.get().unwrap()[b2b_level][combo as usize],
             _ => panic!("なにこれ"),
+        }
+    }
+
+    //インライン増やそう
+    ///後ろが埋まってたらtrue
+    pub fn check_tspin_behind_hole(
+        field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
+        t_pos: i64,
+        rotation: &i8,
+    ) -> bool {
+        let x;
+        let y;
+
+        Mino::get_position_from_value(t_pos, 2, &mut x, &mut y);
+
+        match *rotation {
+            Rotation::ZERO => Self::check_filled_pos(&field, x, y - 1),
+            Rotation::RIGHT => Self::check_filled_pos(&field, x - 1, y),
+            Rotation::TURN => Self::check_filled_pos(&field, x, y + 1),
+            Rotation::LEFT => Self::check_filled_pos(&field, x + 1, y),
+            _ => panic!("わっと"),
         }
     }
 }

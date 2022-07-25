@@ -5,6 +5,7 @@ use crate::evaluation::*;
 use crate::THREAD_POOL;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::f32::consts::E;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -504,11 +505,15 @@ impl BeemSearch {
             }
         }
 
+        //someのやつ参照にしないとやばくね
+        let test5; //= false;
+        let temp_tspin;
+
         let mut result = Vector2::ZERO;
         //右回転
         if !move_flag
             && rotate_count < 2
-            && Environment::try_rotate(Rotate::RIGHT, &field, mino, &mut result)
+            && Environment::try_rotate(Rotate::RIGHT, &field, mino, &mut result, Some(test5))
         {
             let mut newmino = mino.clone();
             //      let mut newrotation = newmino.rotation;
@@ -525,6 +530,16 @@ impl BeemSearch {
                 newmino.rotation,
                 move_count as u32,
             ) {
+                if test5 {
+                    if Environment::check_tspin_behind_hole(&field, mino.position, &mino.rotation) {
+                        temp_tspin = Tspin::Mini;
+                    } else {
+                        temp_tspin = Tspin::Yes;
+                    }
+                } else {
+                    temp_tspin = Tspin::No;
+                }
+
                 Self::search(
                     &mut newmino,
                     &field,
@@ -535,6 +550,7 @@ impl BeemSearch {
                     rotate_count + 1,
                     move_flag,
                     softdrop_value,
+                    temp_tspin,
                 );
             }
         }
@@ -542,7 +558,7 @@ impl BeemSearch {
         //左回転
         if !move_flag
             && rotate_count < 2
-            && Environment::try_rotate(Rotate::LEFT, &field, mino, &mut result)
+            && Environment::try_rotate(Rotate::LEFT, &field, mino, &mut result, Some(test5))
         {
             let mut newmino = mino.clone();
             //     let mut newrotation = newmino.rotation;
@@ -550,6 +566,7 @@ impl BeemSearch {
 
             newmino.move_pos(result.x, result.y);
             Environment::simple_rotate(Rotate::LEFT, &mut newmino, 0);
+
             if !Self::is_passed_before(
                 newmino.mino_kind,
                 newmino.position,
@@ -558,6 +575,16 @@ impl BeemSearch {
                 newmino.rotation,
                 move_count as u32,
             ) {
+                if test5 {
+                    if Environment::check_tspin_behind_hole(&field, mino.position, &mino.rotation) {
+                        temp_tspin = Tspin::Mini;
+                    } else {
+                        temp_tspin = Tspin::Yes;
+                    }
+                } else {
+                    temp_tspin = Tspin::No;
+                }
+
                 Self::search(
                     &mut newmino,
                     &field,
@@ -568,6 +595,7 @@ impl BeemSearch {
                     rotate_count + 1,
                     move_flag,
                     softdrop_value,
+                    temp_tspin,
                 );
             }
         }
