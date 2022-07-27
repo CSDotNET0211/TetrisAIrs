@@ -247,13 +247,15 @@ pub struct Environment {
     next_bag: Vec<i8>,
     cleared_line: isize,
     pub score: isize,
-    dead_flag: bool,
+    pub dead_flag: bool,
     pub now_mino: Mino,
     next: [i8; 5],
     random: ThreadRng,
     field: [bool; Self::FIELD_WIDTH as usize * Self::FIELD_HEIGHT as usize],
     can_hold: bool,
     now_hold: i8,
+    btb_level: u32,
+    combo: u32,
 }
 
 impl Environment {
@@ -278,7 +280,7 @@ impl Environment {
             let mut y = 0;
             self.now_mino.get_position(i, &mut x, &mut y);
 
-            if self.field[(x + y) as usize * 10] {
+            if self.field[x as usize + y as usize * 10] {
                 self.dead_flag = true;
                 self.score -= 1000;
                 break;
@@ -331,6 +333,7 @@ impl Environment {
             self.can_hold,
             &self.field,
             self.next.len() as i8,
+            self.combo.try_into().unwrap(),
         )
     }
 
@@ -359,7 +362,7 @@ impl Environment {
                     &self.field,
                     &mut self.now_mino,
                     &mut srs,
-                    None,
+                    &mut None,
                 ) {
                     self.now_mino.move_pos(srs.x as i32, srs.y as i32);
                     Self::simple_rotate(Rotate::RIGHT, &mut self.now_mino, 0);
@@ -372,7 +375,7 @@ impl Environment {
                     &self.field,
                     &mut self.now_mino,
                     &mut srs,
-                    None,
+                    &mut None,
                 ) {
                     self.now_mino.move_pos(srs.x as i32, srs.y as i32);
                     Self::simple_rotate(Rotate::LEFT, &mut self.now_mino, 0);
@@ -427,6 +430,8 @@ impl Environment {
             field: [false; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
             can_hold: true,
             now_hold: -1,
+            combo: 0,
+            btb_level: 0,
         }
     }
 
@@ -543,14 +548,14 @@ impl Environment {
                 let mut temp = y;
 
                 for _i in 0..value_count {
-                    temp *= 10;
+                    temp *= 100;
                 }
 
                 value_count += 1;
                 values += temp;
             }
         }
-
+        //  println!("          values:@{}@   ", values);
         Self::down_line(values as i32, value_count, field);
 
         value_count
@@ -566,34 +571,31 @@ impl Environment {
             return;
         }
 
-        let mut index = 0 as i32;
+        let mut skip_count = 0 as i32;
 
-        let yvalue = value % 10;
-        value /= 10;
-        index += 1;
+        let mut y_value = value % 100;
+        value /= 100;
+        skip_count += 1;
         value_count -= 1;
 
-        let mut y = yvalue as i32 - 1;
-        while y < Environment::FIELD_HEIGHT as i32 {
-            y += 1;
-
-            if y < Environment::FIELD_HEIGHT as i32 {
-                if value_count > 0 && y + index == value % 10 {
-                    index += 1;
-                    value /= 10;
-                    value_count -= 1;
-                    y -= 1;
-
-                    continue;
-                }
-
+        while y_value < Environment::FIELD_HEIGHT as i32 {
+            //y_valueのインデックスが上の消去部だったらスキップして飛ばす数を増やす
+            if value_count > 0 && y_value + skip_count == value % 100 {
+                skip_count += 1;
+                value /= 100;
+                value_count -= 1;
+            } else {
+                //それ以外の場合は下げる
                 for x in 0..Environment::FIELD_WIDTH as i32 {
-                    if y + index >= Environment::FIELD_HEIGHT as i32 {
-                        field[(x + y * 10) as usize] = false;
+                    if y_value + skip_count >= Environment::FIELD_HEIGHT as i32 {
+                        field[(x + y_value * 10) as usize] = false;
                     } else {
-                        field[(x + y * 10) as usize] = field[(x + (y + index) * 10) as usize];
+                        field[(x + y_value * 10) as usize] =
+                            field[(x + (y_value + skip_count) * 10) as usize];
                     }
                 }
+
+                y_value += 1;
             }
         }
     }
@@ -613,20 +615,20 @@ impl Environment {
         field: &[bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
         current: &mut Mino,
         srspos: &mut Vector2,
-        test5: Option<bool>,
+        test5: &mut Option<bool>,
     ) -> bool {
         if current.mino_kind == MinoKind::O {
             return false;
         }
-        test5 = Some(false);
+        *test5 = Some(false);
 
         let before_rotate = current.rotation;
         Self::simple_rotate(rotate, current, 5);
 
         if rotate == Rotate::LEFT as i8 {
             for i in 0..5 {
-                if i == 4 && test5 != Option::None {
-                    test5 = Some(true);
+                if i == 4 && *test5 != Option::None && current.mino_kind == MinoKind::T {
+                    *test5 = Some(true);
                 }
 
                 if current.mino_kind == MinoKind::I {
@@ -658,6 +660,10 @@ impl Environment {
             return false;
         } else if rotate == Rotate::RIGHT as i8 {
             for i in 0..5 {
+                if i == 4 && *test5 != Option::None && current.mino_kind == MinoKind::T {
+                    *test5 = Some(true);
+                }
+
                 if current.mino_kind == MinoKind::I {
                     if Self::check_valid_pos(
                         &field,
@@ -806,8 +812,8 @@ impl Environment {
         t_pos: i64,
         rotation: &i8,
     ) -> bool {
-        let x;
-        let y;
+        let mut x = 0;
+        let mut y = 0;
 
         Mino::get_position_from_value(t_pos, 2, &mut x, &mut y);
 

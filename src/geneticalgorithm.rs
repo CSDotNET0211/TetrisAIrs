@@ -43,8 +43,6 @@ impl GeneticAlgorithm {
                 Self::get_random(-5.12, -2.12, &mut random),
                 Self::get_random(-5.12, -2.12, &mut random),
                 Self::get_random(-5.12, -2.12, &mut random),
-                Self::get_random(-5.12, -2.12, &mut random),
-                Self::get_random(-5.12, -2.12, &mut random),
             ];
             indivisuals.push(Indivisual {
                 evaluation: Self::Function(&param),

@@ -5,7 +5,6 @@ use crate::evaluation::*;
 use crate::THREAD_POOL;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::f32::consts::E;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -20,11 +19,13 @@ struct ProcessData {
     field: [bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
     first_move: i64,
     before_eval: f64,
+    combo: i32,
 }
 
 impl ProcessData {}
 
-enum Tspin {
+#[derive(PartialOrd, PartialEq, Debug)]
+pub enum Tspin {
     No,
     Yes,
     Mini,
@@ -40,6 +41,7 @@ pub struct SearchedPattern {
     pub field_index: i32,
     pub btb: bool,
     pub can_hold: bool,
+    pub combo: i32,
 }
 
 impl SearchedPattern {
@@ -52,6 +54,7 @@ impl SearchedPattern {
             field_index: -1,
             btb: false,
             can_hold: false,
+            combo: -1,
         }
     }
 }
@@ -79,9 +82,10 @@ impl BeemSearch {
         can_hold: bool,
         field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
         next_count: i8,
+        combo: i32,
     ) -> i64 {
         let counter = Arc::new(AtomicUsize::new(0));
-        //  let next_count = 5;
+        let next_count = 4;
 
         //vec![1,2,3,4] -> 1234
         let mut next_int = 0;
@@ -104,6 +108,7 @@ impl BeemSearch {
             field: *field,
             before_eval: 0.0,
             first_move: -1,
+            combo: combo,
         };
 
         let queue = Arc::new(Mutex::new(Vec::<ProcessData>::new()));
@@ -139,7 +144,8 @@ impl BeemSearch {
             0,
             false,
             -1,
-            Tspin::No,
+            &Tspin::No,
+            &processdata.combo,
         );
 
         let mut beem_width = 0;
@@ -162,6 +168,7 @@ impl BeemSearch {
         });
 
         if processdata.next_count == 0 {
+            //これnewでよくね
             let mut best_in_this_pattern = SearchedPattern {
                 position: -1,
                 move_value: 0,
@@ -170,6 +177,7 @@ impl BeemSearch {
                 move_count: 0,
                 btb: false,
                 can_hold: false,
+                combo: -1,
             };
 
             for beem in 0..beem_width {
@@ -248,6 +256,7 @@ impl BeemSearch {
                                 [searched_data_vec.borrow()[beem].field_index as usize],
                             before_eval: eval,
                             first_move: first,
+                            combo: searched_data_vec.borrow()[beem].combo,
                         };
 
                         {
@@ -347,7 +356,8 @@ impl BeemSearch {
         rotate_count: i32,
         move_flag: bool,
         count_after_softdrop: i32,
-        tspin: Tspin,
+        tspin: &Tspin,
+        combo: &i32,
     ) {
         if cfg!(debug_assertions) {
             if move_count > 11 {
@@ -392,7 +402,8 @@ impl BeemSearch {
                         rotate_count,
                         move_flag,
                         0,
-                        Tspin::No,
+                        &Tspin::No,
+                        &combo,
                     )
                 }
             }
@@ -424,8 +435,25 @@ impl BeemSearch {
                     }
 
                     let cleared_line = Environment::check_and_clear_line(&mut field_clone);
-                    pattern.eval =
-                        Evaluation::evaluate(&field_clone, &newmino, cleared_line) + before_eval;
+
+                    pattern.eval = Evaluation::evaluate(
+                        &field_clone,
+                        &newmino,
+                        cleared_line,
+                        &tspin,
+                        false,
+                        &(*combo as u32),
+                    ) + before_eval;
+
+                    if cleared_line > 0 {
+                        pattern.combo = combo + 1;
+                    } else {
+                        pattern.combo = 0;
+                    }
+
+                    if *tspin == Tspin::Mini || *tspin == Tspin::Yes || cleared_line == 4 {
+                        pattern.btb = true;
+                    }
 
                     VEC_FIELD.with(|vec_field| {
                         vec_field.borrow_mut().push(field_clone);
@@ -470,7 +498,8 @@ impl BeemSearch {
                     rotate_count,
                     true,
                     softdrop_value,
-                    Tspin::No,
+                    &Tspin::No,
+                    &combo,
                 );
             }
         }
@@ -500,24 +529,23 @@ impl BeemSearch {
                     rotate_count,
                     true,
                     softdrop_value,
-                    Tspin::No,
+                    &Tspin::No,
+                    &combo,
                 );
             }
         }
 
         //someのやつ参照にしないとやばくね
-        let test5; //= false;
-        let temp_tspin;
+        let test5 = false;
 
         let mut result = Vector2::ZERO;
         //右回転
         if !move_flag
             && rotate_count < 2
-            && Environment::try_rotate(Rotate::RIGHT, &field, mino, &mut result, Some(test5))
+            && Environment::try_rotate(Rotate::RIGHT, &field, mino, &mut result, &mut Some(test5))
         {
             let mut newmino = mino.clone();
-            //      let mut newrotation = newmino.rotation;
-            //      Environment::get_next_rotate(Rotate::RIGHT, &mut newrotation);
+            let temp_tspin;
 
             newmino.move_pos(result.x, result.y);
             Environment::simple_rotate(Rotate::RIGHT, &mut newmino, 0);
@@ -550,7 +578,8 @@ impl BeemSearch {
                     rotate_count + 1,
                     move_flag,
                     softdrop_value,
-                    temp_tspin,
+                    &temp_tspin,
+                    &combo,
                 );
             }
         }
@@ -558,11 +587,10 @@ impl BeemSearch {
         //左回転
         if !move_flag
             && rotate_count < 2
-            && Environment::try_rotate(Rotate::LEFT, &field, mino, &mut result, Some(test5))
+            && Environment::try_rotate(Rotate::LEFT, &field, mino, &mut result, &mut Some(test5))
         {
             let mut newmino = mino.clone();
-            //     let mut newrotation = newmino.rotation;
-            //    Environment::get_next_rotate(Rotate::LEFT, &mut newrotation);
+            let temp_tspin;
 
             newmino.move_pos(result.x, result.y);
             Environment::simple_rotate(Rotate::LEFT, &mut newmino, 0);
@@ -595,7 +623,8 @@ impl BeemSearch {
                     rotate_count + 1,
                     move_flag,
                     softdrop_value,
-                    temp_tspin,
+                    &temp_tspin,
+                    &combo,
                 );
             }
         }

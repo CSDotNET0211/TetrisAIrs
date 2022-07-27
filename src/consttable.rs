@@ -9,6 +9,9 @@ pub static TSPIN_MINI_DOUBLE_TABLE: OnceCell<[&[u32; 21]; 3]> = OnceCell::new();
 pub static TSPIN_DOUBLE_TABLE: OnceCell<[&[u32; 21]; 3]> = OnceCell::new();
 pub static TSPIN_TRIPLE_TABLE: OnceCell<[&[u32; 21]; 3]> = OnceCell::new();
 
+//pub static TSPIN_TABLE: OnceCell<[&[&[u32; 21]; 3]; 3]> = OnceCell::new();
+//pub static TSPIN_MINI_TABLE: OnceCell<[&[&[u32; 21]; 3]; 3]> = OnceCell::new();
+
 pub struct AttackTable;
 
 impl AttackTable {

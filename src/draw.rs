@@ -5,6 +5,7 @@ use crossterm::{
     cursor::{self, DisableBlinking, Hide},
     execute, queue,
     style::{Color, Print, ResetColor, SetForegroundColor},
+    terminal::{Clear, ClearType},
 };
 use std::io::{stdout, Write};
 
@@ -110,7 +111,17 @@ pub fn print(
         .unwrap();
     }
 
+    queue!(stdout, cursor::MoveTo(60, 60)).unwrap();
+
     stdout.flush().unwrap();
+}
+
+pub fn dead() {
+    fn main() {
+        print!("{}[2J", 27 as char);
+
+        println!("GAME OVER");
+    }
 }
 
 #[allow(dead_code)]
