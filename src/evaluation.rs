@@ -18,7 +18,7 @@ thread_local! {
 }
 
 impl Evaluation {
-    pub const WEIGHT_COUNT: i32 = 7;
+    pub const WEIGHT_COUNT: i32 = 7 + 4;
 
     pub fn evaluate(
         field: &[bool],
@@ -68,6 +68,14 @@ impl Evaluation {
                     4 => power = AttackTable::QUAD[*combo as usize],
                     _ => panic!("{}", cleared_line),
                 }
+            }
+
+            match cleared_line {
+                1 => defence_eval += weight[7],
+                2 => defence_eval += weight[8],
+                3 => defence_eval += weight[9],
+                4 => defence_eval += weight[10],
+                _ => panic!("aaaa"),
             }
         }
 

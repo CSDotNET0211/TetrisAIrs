@@ -527,6 +527,7 @@ impl Environment {
     }
 
     ///ライン消去できるか判断、出来ればフィールド更新してライン消去数を返す
+    #[inline(always)]
     pub fn check_and_clear_line(
         field: &mut [bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
     ) -> i32 {
@@ -561,6 +562,7 @@ impl Environment {
         value_count
     }
 
+    #[inline(always)]
     ///フィールドの消去した部分を下げる
     fn down_line(
         mut value: i32,
@@ -600,6 +602,7 @@ impl Environment {
         }
     }
 
+    #[inline(always)]
     ///ミノを生成する・環境とは独立
     pub fn create_mino_1(mino: i8) -> Mino {
         Mino {
@@ -610,6 +613,7 @@ impl Environment {
     }
 
     ///回転を試みる　ミノ情報は変更しないが一時的に変える都合上可変参照
+    #[inline(always)]
     pub fn try_rotate(
         rotate: i8,
         field: &[bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
@@ -697,6 +701,7 @@ impl Environment {
     }
 
     ///その場で強制回転
+    #[inline(always)]
     pub fn simple_rotate(rotate: i8, mino: &mut Mino, addtemp: i32) {
         let move_pos;
         mino.move_pos(addtemp, addtemp);
@@ -716,6 +721,7 @@ impl Environment {
         Self::get_next_rotate(rotate, &mut mino.rotation);
     }
 
+    #[inline(always)]
     pub fn get_next_rotate(rotate: i8, rotation: &mut i8) {
         if rotate == Rotate::RIGHT {
             *rotation += 1;
@@ -758,6 +764,7 @@ impl Environment {
         }
     }
 
+    #[inline(always)]
     pub fn get_attack_garbage(
         cleared_line: u32,
         is_tspin: bool,
@@ -807,7 +814,8 @@ impl Environment {
 
     //インライン増やそう
     ///後ろが埋まってたらtrue
-    pub fn check_tspin_behind_hole(
+    #[inline(always)]
+    pub fn check_behind_hole_for_tspin_mini(
         field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
         t_pos: i64,
         rotation: &i8,
@@ -824,5 +832,34 @@ impl Environment {
             Rotation::LEFT => Self::check_filled_pos(&field, x + 1, y),
             _ => panic!("わっと"),
         }
+    }
+    #[inline(always)]
+    pub fn is_tspin_corner(
+        field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
+        t_pos: i64,
+    ) -> bool {
+        let mut corner_count = 0;
+
+        if Self::check_filled_pos(&field, 1, 1) {
+            corner_count += 1;
+        }
+
+        if Self::check_filled_pos(&field, -1, 1) {
+            corner_count += 1;
+        }
+
+        if Self::check_filled_pos(&field, 1, -1) {
+            corner_count += 1;
+        }
+
+        if Self::check_filled_pos(&field, -1, -1) {
+            corner_count += 1;
+        }
+
+        if corner_count >= 3 {
+            return true;
+        }
+
+        return false;
     }
 }

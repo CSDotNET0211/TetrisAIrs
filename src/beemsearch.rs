@@ -287,6 +287,7 @@ impl BeemSearch {
     }
 
     ///処理データをマルチスレッドに分配して処理する関数
+    #[inline(always)]
     fn get_loop(queue: Arc<Mutex<Vec<ProcessData>>>, counter: Arc<AtomicUsize>) -> i64 {
         let thread_pool = THREAD_POOL.get().unwrap().lock().unwrap();
         let best = Arc::new(Mutex::new(SearchedPattern::new()));
@@ -320,7 +321,7 @@ impl BeemSearch {
             });
         }
     }
-
+    #[inline(always)]
     fn get_loop_multiply(
         queue: Vec<ProcessData>,
         best: Arc<Mutex<SearchedPattern>>,
@@ -535,7 +536,6 @@ impl BeemSearch {
             }
         }
 
-        //someのやつ参照にしないとやばくね
         let test5 = false;
 
         let mut result = Vector2::ZERO;
@@ -558,8 +558,12 @@ impl BeemSearch {
                 newmino.rotation,
                 move_count as u32,
             ) {
-                if test5 {
-                    if Environment::check_tspin_behind_hole(&field, mino.position, &mino.rotation) {
+                if !test5 && Environment::is_tspin_corner(&field, mino.position) {
+                    if Environment::check_behind_hole_for_tspin_mini(
+                        &field,
+                        mino.position,
+                        &mino.rotation,
+                    ) {
                         temp_tspin = Tspin::Mini;
                     } else {
                         temp_tspin = Tspin::Yes;
@@ -604,7 +608,11 @@ impl BeemSearch {
                 move_count as u32,
             ) {
                 if test5 {
-                    if Environment::check_tspin_behind_hole(&field, mino.position, &mino.rotation) {
+                    if Environment::check_behind_hole_for_tspin_mini(
+                        &field,
+                        mino.position,
+                        &mino.rotation,
+                    ) {
                         temp_tspin = Tspin::Mini;
                     } else {
                         temp_tspin = Tspin::Yes;

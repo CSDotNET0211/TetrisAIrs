@@ -43,6 +43,10 @@ impl GeneticAlgorithm {
                 Self::get_random(-5.12, -2.12, &mut random),
                 Self::get_random(-5.12, -2.12, &mut random),
                 Self::get_random(-5.12, -2.12, &mut random),
+                Self::get_random(-5.12, -2.12, &mut random),
+                Self::get_random(-5.12, -2.12, &mut random),
+                Self::get_random(-5.12, -2.12, &mut random),
+                Self::get_random(-5.12, -2.12, &mut random),
             ];
             indivisuals.push(Indivisual {
                 evaluation: Self::Function(&param),
@@ -178,6 +182,7 @@ impl GeneticAlgorithm {
                     print!("{} ", indivisuals[i].values[j]);
                 }
             }
+            print!("\r\n");
 
             let mut childs = Vec::new();
 
