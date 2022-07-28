@@ -556,7 +556,7 @@ impl Environment {
                 values += temp;
             }
         }
-        //  println!("          values:@{}@   ", values);
+
         Self::down_line(values as i32, value_count, field);
 
         value_count
@@ -740,16 +740,9 @@ impl Environment {
         let mut environment = Environment::new();
         environment.init();
 
-        //     let value = WEIGHT.get().unwrap();
         unsafe {
             *WEIGHT = *weight;
         }
-        //   WEIGHT.set(*weight).unwrap();
-
-        //検索
-        //操作
-        //終了条件確認(ライン消去数)
-        //スコア
 
         loop {
             let mut result = environment.search();
@@ -812,7 +805,6 @@ impl Environment {
         }
     }
 
-    //インライン増やそう
     ///後ろが埋まってたらtrue
     #[inline(always)]
     pub fn check_behind_hole_for_tspin_mini(
@@ -838,21 +830,26 @@ impl Environment {
         field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
         t_pos: i64,
     ) -> bool {
+        let mut x = 0;
+        let mut y = 0;
+
+        Mino::get_position_from_value(t_pos, 2, &mut x, &mut y);
+
         let mut corner_count = 0;
 
-        if Self::check_filled_pos(&field, 1, 1) {
+        if Self::check_filled_pos(&field, x + 1, y + 1) {
             corner_count += 1;
         }
 
-        if Self::check_filled_pos(&field, -1, 1) {
+        if Self::check_filled_pos(&field, x + -1, y + 1) {
             corner_count += 1;
         }
 
-        if Self::check_filled_pos(&field, 1, -1) {
+        if Self::check_filled_pos(&field, x + 1, y + -1) {
             corner_count += 1;
         }
 
-        if Self::check_filled_pos(&field, -1, -1) {
+        if Self::check_filled_pos(&field, x + -1, y + -1) {
             corner_count += 1;
         }
 

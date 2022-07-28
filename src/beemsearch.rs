@@ -360,11 +360,15 @@ impl BeemSearch {
         tspin: &Tspin,
         combo: &i32,
     ) {
+        //ソフドロ落下直後のハードロは禁止してるが、そのあとハードロできる位置に移動して設置も無意味である
         if cfg!(debug_assertions) {
             if move_count > 11 {
                 panic!("ループしてない？");
             }
         }
+
+        //もしソフドロカウントがあって出現位置まで上っていけたらハードロだめ
+
         if count_after_softdrop >= 3 {
             return;
         }
@@ -558,7 +562,10 @@ impl BeemSearch {
                 newmino.rotation,
                 move_count as u32,
             ) {
-                if !test5 && Environment::is_tspin_corner(&field, mino.position) {
+                if !test5
+                    && Environment::is_tspin_corner(&field, mino.position)
+                    && newmino.mino_kind == MinoKind::T
+                {
                     if Environment::check_behind_hole_for_tspin_mini(
                         &field,
                         mino.position,
@@ -607,7 +614,10 @@ impl BeemSearch {
                 newmino.rotation,
                 move_count as u32,
             ) {
-                if test5 {
+                if !test5
+                    && Environment::is_tspin_corner(&field, mino.position)
+                    && newmino.mino_kind == MinoKind::T
+                {
                     if Environment::check_behind_hole_for_tspin_mini(
                         &field,
                         mino.position,

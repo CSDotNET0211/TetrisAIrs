@@ -39,7 +39,7 @@ pub static mut WEIGHT: Lazy<[f64; Evaluation::WEIGHT_COUNT as usize]> = Lazy::ne
     m
 });
 pub static THREAD_POOL: OnceCell<Mutex<ThreadPool>> = OnceCell::new();
-/*
+
 #[link(name = "TestDllForRust", kind = "static")]
 extern "C" {
     fn Test1();
@@ -48,6 +48,8 @@ extern "C" {
     fn Test5(value: &&mut i8) -> bool;
     fn Test6(value: fn(i32));
     fn Test7(value: &Struct7) -> i32;
+    fn Test8(value: &mut i32);
+    fn Test9(value: &mut [[i32; 4]; 2]);
 }
 struct Struct7 {
     x: i32,
@@ -59,7 +61,7 @@ struct MinoState2 {
     y: i32,
     rotation: i32,
     tspin: i32,
-}*/
+}
 
 //デバッグ用でスレッド数変えてる
 fn main() {
@@ -73,21 +75,51 @@ fn main() {
     init_values();
 
     //  GeneticAlgorithm::learn();
-    //792.5787799293676 706.1786561442882 1889.700549149946 -6944.897221780939 1374.471377068234 -95.95441534208207 23.36222289078301 -2367.8415314610356 -3821.623209275727 -301.7040458140284 1451.7086696546132
     unsafe {
         *WEIGHT = [
-            -5104.508150699315,
-            21812.731734085493,
-            -56578.2761999506,
-            -27001.756285058043,
-            31255.35315222146,
-            -2569.0062025903776,
-            535.7389604004768,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
+            792.5787799293676,
+            706.1786561442882,
+            1889.700549149946,
+            -6944.897221780939,
+            1374.471377068234,
+            -95.95441534208207,
+            23.36222289078301,
+            -2367.8415314610356,
+            -3821.623209275727,
+            -301.7040458140284,
+            1451.7086696546132,
         ];
+    }
+
+    println!("Test8");
+    let mut test_value = 111;
+    println!("value={}", test_value);
+    unsafe {
+        Test8(&mut test_value);
+    }
+    println!("value={}", test_value);
+
+    println!("Test9");
+    let mut array = [[0; 4]; 2];
+
+    println!("前");
+    for x in 0..2 {
+        for y in 0..4 {
+            print!("{} ", array[x][y]);
+        }
+        print!("\r\n");
+    }
+
+    unsafe {
+        Test9(&mut array);
+    }
+
+    println!("後");
+    for x in 0..2 {
+        for y in 0..4 {
+            print!("{} ", array[x][y]);
+        }
+        print!("\r\n");
     }
 
     println!("モードを選択してください。");
