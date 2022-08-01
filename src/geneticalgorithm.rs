@@ -2,9 +2,9 @@
 
 use core::panic;
 use std::{
-    borrow::{Borrow, BorrowMut},
     f64::consts::PI,
-    io,
+    fs::File,
+    io::{self, BufRead, BufReader, Write},
     ops::{Index, IndexMut},
 };
 
@@ -151,7 +151,7 @@ impl GeneticAlgorithm {
         io::stdin().read_line(&mut input).unwrap();
         random_min = input.trim().parse::<f64>().unwrap();
 
-        println!("MGGで学習を開始します\r\n学習結果は./learn/[index].txtとして保存されます");
+        println!("MGGで学習を開始します\r\n学習結果は[index].txtとして保存されます");
 
         let mut gen_count = 0;
         let mut random = rand::thread_rng();
@@ -183,6 +183,22 @@ impl GeneticAlgorithm {
                 }
             }
             print!("\r\n");
+
+            /*   if gen_count % 10 == 0 {
+                let mut file = File::create(gen_count.to_string() + ".txt");
+
+            match file {
+                    Ok(file) => {
+                        for indivisual in indivisuals {
+                            for value in indivisual.values {
+                                file.write(value.to_string().as_bytes_mut());
+                            }
+                            file.write(b";");
+                        }
+                    }
+                    Err(e) => {}
+                }
+            }*/
 
             let mut childs = Vec::new();
 

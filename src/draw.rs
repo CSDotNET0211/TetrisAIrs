@@ -1,11 +1,13 @@
 //! コンソール出力用
 
-use crate::environment::{Environment, Mino, Vector2};
+use crate::{
+    environment::{Environment, Vector2},
+    mino::Mino,
+};
 use crossterm::{
     cursor::{self, DisableBlinking, Hide},
     execute, queue,
     style::{Color, Print, ResetColor, SetForegroundColor},
-    terminal::{Clear, ClearType},
 };
 use std::io::{stdout, Write};
 
@@ -13,6 +15,7 @@ pub fn print(
     field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
     mino: &Mino,
     time: u128,
+    eval: f64,
 ) {
     //    enable_raw_mode().unwrap();
 
@@ -42,20 +45,13 @@ pub fn print(
         y -= 1;
     }
 
-    queue!(stdout, Print(time)).unwrap();
+    queue!(stdout, Print("time=".to_string() + &time.to_string())).unwrap();
+    queue!(stdout, Print("\r\neval=".to_string() + &eval.to_string())).unwrap();
 
     let mut quickdrop_value = 0;
 
     loop {
-        if !Environment::check_valid_pos(
-            &field,
-            &mino,
-            &Vector2 {
-                x: 0,
-                y: quickdrop_value,
-            },
-            0,
-        ) {
+        if !Environment::is_valid_pos(&field, &mino, 0, quickdrop_value, 0) {
             quickdrop_value += 1;
             break;
         }

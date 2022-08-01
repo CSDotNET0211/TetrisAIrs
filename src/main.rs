@@ -4,6 +4,7 @@ mod draw;
 mod environment;
 mod evaluation;
 mod geneticalgorithm;
+mod mino;
 mod threadpool;
 use consttable::*;
 use core::panic;
@@ -12,11 +13,7 @@ use crossterm::event::Event;
 use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
 use crossterm::event::KeyModifiers;
-use crossterm::execute;
-use crossterm::style::Print;
 use crossterm::terminal::enable_raw_mode;
-use crossterm::terminal::Clear;
-use crossterm::terminal::ClearType;
 use draw::print;
 use environment::Environment;
 use evaluation::Evaluation;
@@ -40,6 +37,7 @@ pub static mut WEIGHT: Lazy<[f64; Evaluation::WEIGHT_COUNT as usize]> = Lazy::ne
 });
 pub static THREAD_POOL: OnceCell<Mutex<ThreadPool>> = OnceCell::new();
 
+/*
 #[link(name = "TestDllForRust", kind = "static")]
 extern "C" {
     fn Test1();
@@ -62,7 +60,7 @@ struct MinoState2 {
     rotation: i32,
     tspin: i32,
 }
-
+ */
 //デバッグ用でスレッド数変えてる
 fn main() {
     assert!(
@@ -77,49 +75,18 @@ fn main() {
     //  GeneticAlgorithm::learn();
     unsafe {
         *WEIGHT = [
-            792.5787799293676,
-            706.1786561442882,
-            1889.700549149946,
-            -6944.897221780939,
-            1374.471377068234,
-            -95.95441534208207,
-            23.36222289078301,
-            -2367.8415314610356,
-            -3821.623209275727,
-            -301.7040458140284,
-            1451.7086696546132,
+            859.5772141542293,
+            255.49251452325007,
+            -832.9383541909533,
+            -997.1466252831704,
+            858.8252392441109,
+            -79.42641746366616,
+            5.715619146965318,
+            -1866.2145103952935,
+            -993.446453936623,
+            -310.11190823800706,
+            2330.8263544167944,
         ];
-    }
-
-    println!("Test8");
-    let mut test_value = 111;
-    println!("value={}", test_value);
-    unsafe {
-        Test8(&mut test_value);
-    }
-    println!("value={}", test_value);
-
-    println!("Test9");
-    let mut array = [[0; 4]; 2];
-
-    println!("前");
-    for x in 0..2 {
-        for y in 0..4 {
-            print!("{} ", array[x][y]);
-        }
-        print!("\r\n");
-    }
-
-    unsafe {
-        Test9(&mut array);
-    }
-
-    println!("後");
-    for x in 0..2 {
-        for y in 0..4 {
-            print!("{} ", array[x][y]);
-        }
-        print!("\r\n");
     }
 
     println!("モードを選択してください。");
@@ -139,7 +106,7 @@ fn main() {
             environment.init();
 
             loop {
-                print(&environment.get_field_ref(), &environment.now_mino, 0);
+                print(&environment.get_field_ref(), &environment.now_mino, 0, 0.0);
 
                 match crossterm::event::read().unwrap() {
                     Event::Key(KeyEvent {
@@ -185,6 +152,14 @@ fn main() {
 
                 let mut result = environment.search();
 
+                match crossterm::event::read().unwrap() {
+                    Event::Key(KeyEvent {
+                        code: KeyCode::Char('z'),
+                        modifiers: KeyModifiers::NONE,
+                    }) => result = Action::HARD_DROP as i64,
+
+                    _ => (),
+                }
                 //    getch(false).unwrap();
 
                 elapsed_time += timer.elapsed().as_millis();
@@ -199,6 +174,7 @@ fn main() {
                         &environment.get_field_ref(),
                         &environment.now_mino,
                         elapsed_time,
+                        environment.score as f64,
                     );
 
                     environment.user_input((result % 10).try_into().unwrap());

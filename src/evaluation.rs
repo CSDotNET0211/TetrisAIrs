@@ -3,12 +3,7 @@
 use core::panic;
 use std::cell::RefCell;
 
-use crate::{
-    beemsearch::Tspin,
-    consttable::*,
-    environment::{Environment, Mino, MinoKind},
-    WEIGHT,
-};
+use crate::{beemsearch::Tspin, consttable::*, environment::Environment, mino::Mino, WEIGHT};
 
 pub struct Evaluation;
 
@@ -116,6 +111,10 @@ impl Evaluation {
                     row_height[x] = 0;
                 }
             }
+
+            // □□■
+            // □□□■
+            //■■□■■
 
             HEIGHTS_WITHOUT_IDO.with(|value| {
                 let mut height_without_ido = value.borrow_mut();
