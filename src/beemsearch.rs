@@ -2,6 +2,8 @@
 
 use crate::environment::*;
 use crate::evaluation::*;
+use crate::mino::Mino;
+use crate::Environment;
 use crate::THREAD_POOL;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -115,6 +117,44 @@ impl BeemSearch {
 
         {
             queue.lock().unwrap().push(data);
+
+            if can_hold {
+                if hold == -1 {
+                    let mut temp = 1;
+                    for _i in 0..next_count - 1 {
+                        temp *= 10;
+                    }
+
+                    let data = ProcessData {
+                        current: (next_int / temp) as i8,
+                        next: next_int % temp,
+                        next_count: next_count,
+                        hold: current,
+                        can_hold: can_hold,
+                        field: *field,
+                        before_eval: 0.0,
+                        first_move: Action::HOLD as i64,
+                        combo: combo,
+                    };
+
+                    queue.lock().unwrap().push(data);
+                } else {
+                    let data = ProcessData {
+                        current: hold,
+                        next: next_int,
+                        next_count: next_count,
+                        hold: current,
+                        can_hold: can_hold,
+                        field: *field,
+                        before_eval: 0.0,
+                        first_move: Action::HOLD as i64,
+                        combo: combo,
+                    };
+
+                    queue.lock().unwrap().push(data);
+                }
+                counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            }
         }
 
         counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -132,7 +172,7 @@ impl BeemSearch {
     ) {
         init();
 
-        let mut mino = Environment::create_mino_1(processdata.current);
+        let mut mino = Environment::create_mino_data(processdata.current);
 
         Self::search(
             &mut mino,
@@ -144,7 +184,7 @@ impl BeemSearch {
             0,
             false,
             -1,
-            &Tspin::No,
+            &mut Tspin::No,
             &processdata.combo,
         );
 
@@ -157,28 +197,18 @@ impl BeemSearch {
                     .extend(searched_data.borrow().values().into_iter());
             });
 
-            if searched_data_vec.borrow().len() <= 10 {
+            if searched_data_vec.borrow().len() <= 5 {
                 beem_width = searched_data_vec.borrow().len();
             } else {
                 searched_data_vec
                     .borrow_mut()
                     .sort_by(|a, b| b.eval.partial_cmp(&a.eval).unwrap());
-                beem_width = 10;
+                beem_width = 5;
             }
         });
 
         if processdata.next_count == 0 {
-            //これnewでよくね
-            let mut best_in_this_pattern = SearchedPattern {
-                position: -1,
-                move_value: 0,
-                eval: 0.0,
-                field_index: 0,
-                move_count: 0,
-                btb: false,
-                can_hold: false,
-                combo: -1,
-            };
+            let mut best_in_this_pattern = SearchedPattern::new();
 
             for beem in 0..beem_width {
                 let mut first = -1;
@@ -186,6 +216,8 @@ impl BeemSearch {
                 SEARCHED_DATA_VEC.with(|vec| {
                     if processdata.first_move == -1 {
                         first = vec.borrow()[beem].move_value;
+                    } else if processdata.first_move == Action::HOLD as i64 {
+                        first = vec.borrow()[beem].move_value * 10 + Action::HOLD as i64;
                     } else {
                         first = processdata.first_move;
                     }
@@ -214,6 +246,8 @@ impl BeemSearch {
 
                 if processdata.first_move == -1 {
                     first = firstmove;
+                } else if processdata.first_move == Action::HOLD as i64 {
+                    first = firstmove * 10 + Action::HOLD as i64;
                 } else {
                     first = processdata.first_move;
                 }
@@ -357,17 +391,18 @@ impl BeemSearch {
         rotate_count: i32,
         move_flag: bool,
         count_after_softdrop: i32,
-        tspin: &Tspin,
+        tspin: &mut Tspin,
         combo: &i32,
     ) {
         //ソフドロ落下直後のハードロは禁止してるが、そのあとハードロできる位置に移動して設置も無意味である
-        if cfg!(debug_assertions) {
-            if move_count > 11 {
-                panic!("ループしてない？");
+        //生成したときの
+        //もしソフドロカウントがあって出現位置まで上っていけたらハードロだめ
+        if count_after_softdrop > 0 {
+            //仮で一つ上に移動できるかのみ判断する
+            if Environment::is_valid_pos(&field, &mino, 0, 1, 0) {
+                return;
             }
         }
-
-        //もしソフドロカウントがあって出現位置まで上っていけたらハードロだめ
 
         if count_after_softdrop >= 3 {
             return;
@@ -385,10 +420,12 @@ impl BeemSearch {
             let mut temp = 0;
 
             loop {
-                if !Environment::check_valid_pos(&field, &newmino, &Vector2::new(0, -temp), 0) {
+                if !Environment::is_valid_pos(&field, &newmino, 0, -temp, 0) {
                     temp -= 1;
                     break;
                 }
+
+                *tspin = Tspin::No;
                 temp += 1;
             }
 
@@ -407,7 +444,7 @@ impl BeemSearch {
                         rotate_count,
                         move_flag,
                         0,
-                        &Tspin::No,
+                        &mut Tspin::No,
                         &combo,
                     )
                 }
@@ -439,7 +476,7 @@ impl BeemSearch {
                         field_clone[(x + y * 10) as usize] = true;
                     }
 
-                    let cleared_line = Environment::check_and_clear_line(&mut field_clone);
+                    let cleared_line = Environment::check_and_clear_line_value(&mut field_clone);
 
                     pattern.eval = Evaluation::evaluate(
                         &field_clone,
@@ -448,7 +485,7 @@ impl BeemSearch {
                         &tspin,
                         false,
                         &(*combo as u32),
-                    ) + before_eval;
+                    ) + before_eval * 0.8;
 
                     if cleared_line > 0 {
                         pattern.combo = combo + 1;
@@ -479,7 +516,7 @@ impl BeemSearch {
 
         //左移動
         if lock_direction != Action::MOVE_RIGHT
-            && Environment::check_valid_pos(&field, &mino, &Vector2::MX1, 0)
+            && Environment::is_valid_pos(&field, &mino, Vector2::MX1.x, Vector2::MX1.y, 0)
         {
             let mut newmino = mino.clone();
 
@@ -503,14 +540,14 @@ impl BeemSearch {
                     rotate_count,
                     true,
                     softdrop_value,
-                    &Tspin::No,
+                    &mut Tspin::No,
                     &combo,
                 );
             }
         }
         //右移動
         if lock_direction != Action::MOVE_LEFT
-            && Environment::check_valid_pos(&field, &mino, &Vector2::X1, 0)
+            && Environment::is_valid_pos(&field, &mino, Vector2::X1.x, Vector2::X1.y, 0)
         {
             let mut newmino = mino.clone();
 
@@ -534,7 +571,7 @@ impl BeemSearch {
                     rotate_count,
                     true,
                     softdrop_value,
-                    &Tspin::No,
+                    &mut Tspin::No,
                     &combo,
                 );
             }
@@ -546,13 +583,13 @@ impl BeemSearch {
         //右回転
         if !move_flag
             && rotate_count < 2
-            && Environment::try_rotate(Rotate::RIGHT, &field, mino, &mut result, &mut Some(test5))
+            && mino.try_rotate(Rotate::RIGHT, &field, &mut result, &mut Some(test5))
         {
             let mut newmino = mino.clone();
-            let temp_tspin;
+            let mut temp_tspin;
 
             newmino.move_pos(result.x, result.y);
-            Environment::simple_rotate(Rotate::RIGHT, &mut newmino, 0);
+            newmino.rotate_force_without_srs(Rotate::RIGHT, 0);
 
             if !Self::is_passed_before(
                 newmino.mino_kind,
@@ -589,7 +626,7 @@ impl BeemSearch {
                     rotate_count + 1,
                     move_flag,
                     softdrop_value,
-                    &temp_tspin,
+                    &mut temp_tspin,
                     &combo,
                 );
             }
@@ -598,13 +635,13 @@ impl BeemSearch {
         //左回転
         if !move_flag
             && rotate_count < 2
-            && Environment::try_rotate(Rotate::LEFT, &field, mino, &mut result, &mut Some(test5))
+            && mino.try_rotate(Rotate::LEFT, &field, &mut result, &mut Some(test5))
         {
             let mut newmino = mino.clone();
-            let temp_tspin;
+            let mut temp_tspin;
 
             newmino.move_pos(result.x, result.y);
-            Environment::simple_rotate(Rotate::LEFT, &mut newmino, 0);
+            newmino.rotate_force_without_srs(Rotate::LEFT, 0);
 
             if !Self::is_passed_before(
                 newmino.mino_kind,
@@ -614,6 +651,7 @@ impl BeemSearch {
                 newmino.rotation,
                 move_count as u32,
             ) {
+                //is tspin関数
                 if !test5
                     && Environment::is_tspin_corner(&field, mino.position)
                     && newmino.mino_kind == MinoKind::T
@@ -641,7 +679,7 @@ impl BeemSearch {
                     rotate_count + 1,
                     move_flag,
                     softdrop_value,
-                    &temp_tspin,
+                    &mut temp_tspin,
                     &combo,
                 );
             }
@@ -659,7 +697,9 @@ impl BeemSearch {
         newrotation: i8,
         move_count: u32,
     ) -> bool {
-        Mino::add_position_xy(&mut pos, x_diff, y_diff);
+        for i in 0..4 {
+            Mino::add_position(&mut pos, x_diff, y_diff, i);
+        }
 
         let hash = Self::get_hash_for_position(kind, newrotation, &pos);
         let mut returnvalue = true;

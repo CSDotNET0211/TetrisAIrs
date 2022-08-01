@@ -4,9 +4,10 @@ use core::panic;
 use rand::prelude::*;
 
 use crate::consttable::{
-    AttackTable, SRSTable, QUAD_TABLE, TSPIN_DOUBLE_TABLE, TSPIN_MINI_DOUBLE_TABLE,
-    TSPIN_MINI_SINGLE_TABLE, TSPIN_SINGLE_TABLE, TSPIN_TRIPLE_TABLE,
+    AttackTable, QUAD_TABLE, TSPIN_DOUBLE_TABLE, TSPIN_MINI_DOUBLE_TABLE, TSPIN_MINI_SINGLE_TABLE,
+    TSPIN_SINGLE_TABLE, TSPIN_TRIPLE_TABLE,
 };
+use crate::mino::Mino;
 use crate::{beemsearch::BeemSearch, degit, evaluation::Evaluation, WEIGHT};
 
 pub struct Vector2 {
@@ -14,7 +15,7 @@ pub struct Vector2 {
     pub y: i32,
 }
 
-trait Revert {
+pub trait Revert {
     fn revert(&self) -> Self;
     fn clone(&self) -> Self;
 }
@@ -92,157 +93,6 @@ impl Rotate {
     pub const LEFT: i8 = 1;
 }
 
-#[derive(Clone)]
-pub struct Mino {
-    pub mino_kind: i8,
-    pub rotation: i8,
-    pub position: i64,
-}
-
-impl Mino {
-    pub const fn new() -> Mino {
-        Mino {
-            mino_kind: -1,
-            position: -1,
-            rotation: Rotation::ZERO,
-        }
-    }
-
-    pub fn init(&mut self, position: i64) {
-        if position == -1 {
-            self.position = -1;
-        } else {
-            self.position = position;
-        }
-
-        self.rotation = Rotation::ZERO;
-    }
-
-    ///位置を移動
-    #[inline(always)]
-    pub fn move_pos(&mut self, x: i32, y: i32) {
-        for i in 0..4 {
-            Self::add_position(&mut self.position, x, y, i);
-        }
-    }
-
-    ///SRS専用の位置移動
-    pub fn move_for_srs(&mut self, srstest: &[[Vector2; 4]; 4], rotate: i8, rotation: i8) {
-        if rotate == Rotate::RIGHT {
-            let value = rotation;
-
-            for i in 0..4 {
-                Self::add_position(
-                    &mut self.position,
-                    srstest[value as usize][i].x,
-                    srstest[value as usize][i].y,
-                    i,
-                );
-            }
-        } else {
-            let value = rotate_enum(rotate, rotation) as usize;
-
-            for i in 0..4 {
-                Self::add_position(
-                    &mut self.position,
-                    -srstest[value][i].x,
-                    -srstest[value][i].y,
-                    i,
-                );
-            }
-        }
-
-        fn rotate_enum(rotate1: i8, mut rotation: i8) -> i8 {
-            if rotate1 == Rotate::RIGHT {
-                rotation += 1;
-
-                if rotation == Rotation::LEFT + 1 {
-                    rotation = Rotation::ZERO;
-                }
-            } else {
-                rotation -= 1;
-
-                if rotation == Rotation::ZERO - 1 {
-                    rotation = Rotation::LEFT;
-                }
-            }
-
-            rotation
-        }
-    }
-
-    ///x,yそれぞれの位置を追加
-    #[inline(always)]
-    fn add_position(position: &mut i64, x: i32, y: i32, mut index: usize) {
-        if index == usize::MAX {
-            index = 0;
-        } else {
-            index = 4 - index - 1;
-        }
-
-        let mut add_value = y as i64;
-        add_value += x as i64 * 100;
-
-        for _i in 0..index {
-            add_value *= 10000;
-        }
-
-        *position += add_value;
-    }
-
-    ///x,yをまとめて追加
-    #[inline(always)]
-    pub fn add_position_xy(array: &mut i64, x: i32, y: i32) {
-        let value = y + (x * 100);
-        let mut temp = value as i64;
-
-        for i in 1..5 {
-            if i != 1 {
-                temp *= 10000;
-            }
-
-            *array += temp as i64;
-        }
-    }
-
-    ///xまたはyの位置を取得
-    #[inline(always)]
-    pub fn get_position(&self, mut index: i32, x: &mut i32, y: &mut i32) {
-        if index == i32::MAX {
-            index = 0;
-        } else {
-            index = 4 - index - 1;
-        }
-
-        let mut value = self.position;
-        for _i in 0..index {
-            value /= 10000;
-        }
-        value %= 10000;
-
-        *x = value as i32 / 100;
-        *y = value as i32 % 100;
-    }
-
-    ///引数の値から位置を取得
-    #[inline(always)]
-    pub fn get_position_from_value(mut value: i64, mut index: i32, x: &mut i32, y: &mut i32) {
-        if index == i32::MAX {
-            index = 0;
-        } else {
-            index = 4 - index - 1;
-        }
-
-        for _i in 0..index {
-            value /= 10000;
-        }
-        value %= 10000;
-
-        *x = value as i32 / 100;
-        *y = value as i32 % 100;
-    }
-}
-
 pub struct Environment {
     next_bag: Vec<i8>,
     cleared_line: isize,
@@ -256,6 +106,8 @@ pub struct Environment {
     now_hold: i8,
     btb_level: u32,
     combo: u32,
+    last_move: i8,
+    srs_test5: bool,
 }
 
 impl Environment {
@@ -263,14 +115,14 @@ impl Environment {
     pub const FIELD_HEIGHT: usize = 26;
 
     ///ミノ情報を作成して環境を更新する
-    pub fn create_mino(&mut self, mino: i8) {
+    pub fn create_mino(&mut self, mino: Option<i8>) {
         self.now_mino = Mino::new();
 
-        if mino == -1 {
+        if mino == Option::None {
             self.now_mino.mino_kind = self.next[0];
             self.refresh_next();
         } else {
-            self.now_mino.mino_kind = mino;
+            self.now_mino.mino_kind = mino.unwrap();
         }
         self.now_mino
             .init(Self::get_default_mino_pos(&self.now_mino.mino_kind));
@@ -343,42 +195,51 @@ impl Environment {
 
         match action {
             Action::MOVE_RIGHT => {
-                if Self::check_valid_pos(&self.field, &self.now_mino, &Vector2::X1, 0) {
+                if Self::is_valid_pos(&self.field, &self.now_mino, Vector2::X1.x, Vector2::X1.y, 0)
+                {
                     self.now_mino
                         .move_pos(Vector2::X1.x as i32, Vector2::X1.y as i32);
+                    self.last_move = Action::MOVE_RIGHT;
                 }
             }
 
             Action::MOVE_LEFT => {
-                if Self::check_valid_pos(&self.field, &self.now_mino, &Vector2::MX1, 0) {
+                if Self::is_valid_pos(
+                    &self.field,
+                    &self.now_mino,
+                    Vector2::MX1.x,
+                    Vector2::MX1.y,
+                    0,
+                ) {
                     self.now_mino
                         .move_pos(Vector2::MX1.x as i32, Vector2::MX1.y as i32);
+                    self.last_move = Action::MOVE_LEFT;
                 }
             }
 
             Action::ROTATE_RIGHT => {
-                if Self::try_rotate(
+                if self.now_mino.try_rotate(
                     Rotate::RIGHT as i8,
                     &self.field,
-                    &mut self.now_mino,
                     &mut srs,
-                    &mut None,
+                    &mut Some(self.srs_test5),
                 ) {
                     self.now_mino.move_pos(srs.x as i32, srs.y as i32);
-                    Self::simple_rotate(Rotate::RIGHT, &mut self.now_mino, 0);
+                    self.now_mino.rotate_force_without_srs(Rotate::RIGHT, 0);
+                    self.last_move = Action::ROTATE_RIGHT;
                 }
             }
 
             Action::ROTATE_LEFT => {
-                if Self::try_rotate(
+                if self.now_mino.try_rotate(
                     Rotate::LEFT as i8,
                     &self.field,
-                    &mut self.now_mino,
                     &mut srs,
-                    &mut None,
+                    &mut Some(self.srs_test5),
                 ) {
                     self.now_mino.move_pos(srs.x as i32, srs.y as i32);
-                    Self::simple_rotate(Rotate::LEFT, &mut self.now_mino, 0);
+                    self.now_mino.rotate_force_without_srs(Rotate::LEFT, 0);
+                    self.last_move = Action::ROTATE_LEFT;
                 }
             }
 
@@ -387,9 +248,16 @@ impl Environment {
             }
 
             Action::SOFT_DROP => loop {
-                if Self::check_valid_pos(&self.field, &self.now_mino, &Vector2::MY1, 0) {
+                if Self::is_valid_pos(
+                    &self.field,
+                    &self.now_mino,
+                    Vector2::MY1.x,
+                    Vector2::MY1.y,
+                    0,
+                ) {
                     self.now_mino
                         .move_pos(Vector2::MY1.x as i32, Vector2::MY1.y as i32);
+                    self.last_move = Action::SOFT_DROP;
                 } else {
                     break;
                 }
@@ -408,10 +276,10 @@ impl Environment {
 
             if self.now_hold == -1 {
                 self.now_hold = self.now_mino.mino_kind;
-                self.create_mino(-1);
+                self.create_mino(None);
             } else {
                 let temp_now = self.now_mino.mino_kind;
-                self.create_mino(self.now_hold);
+                self.create_mino(Some(self.now_hold));
                 self.now_hold = temp_now;
             }
         }
@@ -432,6 +300,8 @@ impl Environment {
             now_hold: -1,
             combo: 0,
             btb_level: 0,
+            last_move: Action::NULL,
+            srs_test5: false,
         }
     }
 
@@ -440,15 +310,22 @@ impl Environment {
         for _i in 0..self.next.len() {
             self.refresh_next();
         }
-        self.create_mino(-1);
+        self.create_mino(None);
     }
 
     ///ハードドロップ
     fn set_mino(&mut self) {
         loop {
-            if Self::check_valid_pos(&self.field, &self.now_mino, &Vector2::MY1, 0) {
+            if Self::is_valid_pos(
+                &self.field,
+                &self.now_mino,
+                Vector2::MY1.x,
+                Vector2::MY1.y,
+                0,
+            ) {
                 self.now_mino
                     .move_pos(Vector2::MY1.x as i32, Vector2::MY1.y as i32);
+                self.last_move = Action::SOFT_DROP;
             } else {
                 break;
             }
@@ -464,28 +341,58 @@ impl Environment {
             self.field[(x + y * 10) as usize] = true;
         }
 
+        let line = Self::check_and_clear_line(self);
+        self.cleared_line += line as isize;
+
         self.score += 2;
 
-        let line = Self::check_and_clear_line(&mut self.field);
-        self.cleared_line += line as isize;
-        match line {
-            0 => {}
-            1 => self.score += 100,
-            2 => self.score += 300,
-            3 => self.score += 500,
-            4 => self.score += 800,
-            _ => panic!("invalid value"),
-        }
-
-        self.create_mino(-1);
+        self.create_mino(None);
     }
 
+    fn update_score(&mut self, cleared_line: u32) {
+        if self.now_mino.mino_kind == MinoKind::T
+            && (self.last_move == Action::ROTATE_RIGHT || self.last_move == Action::ROTATE_LEFT)
+            && Self::is_tspin_corner(&self.field, self.now_mino.position)
+            && !self.srs_test5
+        {
+            if Self::check_behind_hole_for_tspin_mini(
+                &self.field,
+                self.now_mino.position,
+                &self.now_mino.rotation,
+            ) {
+                match cleared_line {
+                    0 => self.score += 100,
+                    1 => self.score += 200,
+                    2 => self.score += 400,
+                    _ => panic!("3ライン以上のTスピンミニ消しは存在しません。"),
+                }
+            } else {
+                match cleared_line {
+                    0 => self.score += 400,
+                    1 => self.score += 800,
+                    2 => self.score += 1200,
+                    3 => self.score += 1600,
+                    _ => panic!("4ライン以上のTスピン消しは存在しません。"),
+                }
+            }
+        } else {
+            match cleared_line {
+                0 => {}
+                1 => self.score += 100,
+                2 => self.score += 300,
+                3 => self.score += 500,
+                4 => self.score += 800,
+                _ => panic!("5ライン以上の同時消しは存在しません。"),
+            }
+        }
+    }
     ///移動後の位置が適切かどうか
     #[inline(always)]
-    pub fn check_valid_pos(
+    pub fn is_valid_pos(
         field: &[bool; Environment::FIELD_HEIGHT * Environment::FIELD_WIDTH],
         mino: &Mino,
-        try_move: &Vector2,
+        move_x: i32,
+        move_y: i32,
         add: i32,
     ) -> bool {
         for i in 0..4 {
@@ -495,11 +402,11 @@ impl Environment {
             x += add;
             y += add;
 
-            if !(x + try_move.x < Environment::FIELD_WIDTH as i32
-                && x + try_move.x >= 0
-                && y + try_move.y >= 0
-                && y + try_move.y < Environment::FIELD_HEIGHT as i32
-                && !field[((x + try_move.x) + (y + try_move.y) * 10) as usize])
+            if !(x + move_x < Environment::FIELD_WIDTH as i32
+                && x + move_x >= 0
+                && y + move_y >= 0
+                && y + move_y < Environment::FIELD_HEIGHT as i32
+                && !field[((x + move_x) + (y + move_y) * 10) as usize])
             {
                 return false;
             }
@@ -528,7 +435,7 @@ impl Environment {
 
     ///ライン消去できるか判断、出来ればフィールド更新してライン消去数を返す
     #[inline(always)]
-    pub fn check_and_clear_line(
+    pub fn check_and_clear_line_value(
         field: &mut [bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
     ) -> i32 {
         let mut values = 0;
@@ -558,6 +465,41 @@ impl Environment {
         }
 
         Self::down_line(values as i32, value_count, field);
+
+        value_count
+    }
+
+    #[inline(always)]
+    fn check_and_clear_line(&mut self) -> i32 {
+        let mut values = 0;
+        let mut value_count = 0;
+        let mut flag;
+
+        for y in 0..Environment::FIELD_HEIGHT {
+            flag = true;
+
+            for x in 0..Environment::FIELD_WIDTH {
+                if !self.field[x + y * 10] {
+                    flag = false;
+                    break;
+                }
+            }
+
+            if flag {
+                let mut temp = y;
+
+                for _i in 0..value_count {
+                    temp *= 100;
+                }
+
+                value_count += 1;
+                values += temp;
+            }
+        }
+
+        Self::update_score(self, value_count as u32);
+
+        Self::down_line(values as i32, value_count, &mut self.field);
 
         value_count
     }
@@ -604,135 +546,11 @@ impl Environment {
 
     #[inline(always)]
     ///ミノを生成する・環境とは独立
-    pub fn create_mino_1(mino: i8) -> Mino {
+    pub fn create_mino_data(mino: i8) -> Mino {
         Mino {
             mino_kind: mino,
             rotation: Rotation::ZERO,
             position: Self::get_default_mino_pos(&mino),
-        }
-    }
-
-    ///回転を試みる　ミノ情報は変更しないが一時的に変える都合上可変参照
-    #[inline(always)]
-    pub fn try_rotate(
-        rotate: i8,
-        field: &[bool; Environment::FIELD_WIDTH * Environment::FIELD_HEIGHT],
-        current: &mut Mino,
-        srspos: &mut Vector2,
-        test5: &mut Option<bool>,
-    ) -> bool {
-        if current.mino_kind == MinoKind::O {
-            return false;
-        }
-        *test5 = Some(false);
-
-        let before_rotate = current.rotation;
-        Self::simple_rotate(rotate, current, 5);
-
-        if rotate == Rotate::LEFT as i8 {
-            for i in 0..5 {
-                if i == 4 && *test5 != Option::None && current.mino_kind == MinoKind::T {
-                    *test5 = Some(true);
-                }
-
-                if current.mino_kind == MinoKind::I {
-                    if Self::check_valid_pos(
-                        &field,
-                        &current,
-                        &(&SRSTable::IKICK_TABLE[current.rotation as usize][i]).revert(),
-                        -5,
-                    ) {
-                        *srspos = SRSTable::IKICK_TABLE[current.rotation as usize][i].revert();
-                        Self::simple_rotate(Rotate::RIGHT, current, -5);
-                        return true;
-                    }
-                } else {
-                    if Self::check_valid_pos(
-                        &field,
-                        &current,
-                        &(&SRSTable::KICK_TABLE[current.rotation as usize][i]).revert(),
-                        -5,
-                    ) {
-                        *srspos = SRSTable::KICK_TABLE[current.rotation as usize][i].revert();
-                        Self::simple_rotate(Rotate::RIGHT, current, -5);
-                        return true;
-                    }
-                }
-            }
-
-            Self::simple_rotate(Rotate::RIGHT, current, -5);
-            return false;
-        } else if rotate == Rotate::RIGHT as i8 {
-            for i in 0..5 {
-                if i == 4 && *test5 != Option::None && current.mino_kind == MinoKind::T {
-                    *test5 = Some(true);
-                }
-
-                if current.mino_kind == MinoKind::I {
-                    if Self::check_valid_pos(
-                        &field,
-                        &current,
-                        &SRSTable::IKICK_TABLE[before_rotate as usize][i],
-                        -5,
-                    ) {
-                        Self::simple_rotate(Rotate::LEFT, current, -5);
-                        *srspos = SRSTable::IKICK_TABLE[before_rotate as usize][i].clone();
-                        return true;
-                    }
-                } else {
-                    if Self::check_valid_pos(
-                        &field,
-                        &current,
-                        &SRSTable::KICK_TABLE[before_rotate as usize][i],
-                        -5,
-                    ) {
-                        Self::simple_rotate(Rotate::LEFT, current, -5);
-                        *srspos = SRSTable::KICK_TABLE[before_rotate as usize][i].clone();
-                        return true;
-                    }
-                }
-            }
-
-            Self::simple_rotate(Rotate::LEFT, current, -5);
-            return false;
-        } else {
-            panic!("そんな回転は存在しない");
-        }
-    }
-
-    ///その場で強制回転
-    #[inline(always)]
-    pub fn simple_rotate(rotate: i8, mino: &mut Mino, addtemp: i32) {
-        let move_pos;
-        mino.move_pos(addtemp, addtemp);
-
-        match mino.mino_kind as i8 {
-            MinoKind::J => move_pos = SRSTable::JROTATE_TABLE,
-            MinoKind::L => move_pos = SRSTable::LROTATE_TABLE,
-            MinoKind::S => move_pos = SRSTable::SROTATE_TABLE,
-            MinoKind::Z => move_pos = SRSTable::ZROTATE_TABLE,
-            MinoKind::T => move_pos = SRSTable::TROTATE_TABLE,
-            MinoKind::I => move_pos = SRSTable::IROTATE_TABLE,
-            _ => panic!("なにそれ"),
-        }
-
-        mino.move_for_srs(&move_pos, rotate, mino.rotation);
-
-        Self::get_next_rotate(rotate, &mut mino.rotation);
-    }
-
-    #[inline(always)]
-    pub fn get_next_rotate(rotate: i8, rotation: &mut i8) {
-        if rotate == Rotate::RIGHT {
-            *rotation += 1;
-            if *rotation == Rotation::LEFT + 1 {
-                *rotation = Rotation::ZERO;
-            }
-        } else {
-            *rotation -= 1;
-            if *rotation == Rotation::ZERO - 1 {
-                *rotation = Rotation::LEFT;
-            }
         }
     }
 
@@ -751,7 +569,7 @@ impl Environment {
                 result /= 10;
             }
 
-            if environment.cleared_line >= 40 || environment.dead_flag {
+            if environment.cleared_line >= 150 || environment.dead_flag {
                 return environment.score as i32;
             }
         }
@@ -858,5 +676,10 @@ impl Environment {
         }
 
         return false;
+    }
+
+    #[inline(always)]
+    pub fn is_tspin() -> bool {
+        false
     }
 }
